@@ -21,12 +21,14 @@ class backend {
 		dotenv.config()
 
 		const MIN_TIME = 300000 //60000 (1m) or 300000 (5m)
+		const MODE_MIN = 50 // 100/1000
 		const xrpl = new XrplClient(['wss://s.devnet.rippletest.net:51233'])
 		const currency = {}
 		const stable = {}
 		const crypto = {}
 		let definitions, socket
 		let connected = false
+		let mode = '1min' // every/1min/5min
 
 		Object.assign(this, {
 			async run() {
@@ -43,14 +45,20 @@ class backend {
 
 				const self = this
 				const callback = async (event) => {
-					log('ledger close')
-					await self.chunckSubmit()
+					log('ledger close', 'mode:' + mode)
+					if (mode === 'every') {
+						await self.chunckSubmit()
+					}
+					this.accountBalance() // dont wait!!
 				}
 				xrpl.on('ledger', callback)
 
 				setInterval(async () => {
+					if (mode === '1min') {
+						await self.chunckSubmit(10, false)
+					}
 					await self.getAggregatePrice()
-				}, 10000)
+				}, 60000)
 			},
 			async getAggregatePrice(asset = 'USD') {
 				const command = {
@@ -86,6 +94,24 @@ class backend {
 			countDecimals(value) {
 				if (Math.floor(value) === value) return 0
 				return value.toString().split(".")[1].length || 0
+			},
+			async accountBalance() {
+				const acc_payload = {
+					'command': 'account_info',
+					'account': process.env.ACCOUNT,
+					'ledger_index': 'current'
+				}
+				const account_info = await xrpl.send(acc_payload)
+				// log(account_info)
+				if ('error' in account_info) {
+					log('error account_info', account_info)
+					return
+				}
+				if ((account_info.account_data.Balance / 1_000_000) > MODE_MIN) {
+					mode = 'every'
+					return
+				}
+				mode = '1min'
 			},
 			async connectWebsocket() {
 				const self = this
