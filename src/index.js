@@ -187,78 +187,6 @@ class backend {
 					await this.pause(1200)
 				}
 				
-				const CurrencyDataSeries = []
-				Object.entries(currency).sort().forEach(([QuoteAsset, value]) => {
-					// log(value)
-					const scale = this.countDecimals(value.Price)
-					const data = {
-						'PriceData': {
-							'BaseAsset': 'XRP',
-							'QuoteAsset': this.currencyUTF8ToHex(QuoteAsset),
-							'AssetPrice': Math.round(value.Price * Math.pow(10, scale)),
-							'Timestamp': value.Timestamp
-						}
-					}
-					if (scale > 0) {
-						data.PriceData.Scale = this.countDecimals(value.Price)
-					}
-					CurrencyDataSeries.push(data)
-				})
-
-				const CryptoDataSeries = []
-				Object.entries(crypto).sort().forEach(([QuoteAsset, value]) => {
-					// log(value)
-					const scale = this.countDecimals(value.Price)
-					const data = {
-						'PriceData': {
-							'BaseAsset': 'XRP',
-							'QuoteAsset': this.currencyUTF8ToHex(QuoteAsset),
-							'AssetPrice': Math.round(value.Price * Math.pow(10, scale)),
-							'Timestamp': value.Timestamp
-						}
-					}
-					if (scale > 0) {
-						data.PriceData.Scale = this.countDecimals(value.Price)
-					}
-					CryptoDataSeries.push(data)
-				})
-
-				const StableDataSeries = []
-				Object.entries(stable).sort().forEach(([QuoteAsset, value]) => {
-					// log(value)
-					const scale = this.countDecimals(value.Price)
-					const data = {
-						'PriceData': {
-							'BaseAsset': 'XRP',
-							'QuoteAsset': this.currencyUTF8ToHex(QuoteAsset),
-							'AssetPrice': Math.round(value.Price * Math.pow(10, scale)),
-							'Timestamp': value.Timestamp
-						}
-					}
-					if (scale > 0) {
-						data.PriceData.Scale = this.countDecimals(value.Price)
-					}
-					StableDataSeries.push(data)
-				})
-
-				const ForexDataSeries = []
-				Object.entries(forex).sort().forEach(([QuoteAsset, value]) => {
-					// log(value)
-					const scale = this.countDecimals(value.Price)
-					const data = {
-						'PriceData': {
-							'BaseAsset': 'USD',
-							'QuoteAsset': QuoteAsset,
-							'AssetPrice': Math.round(value.Price * Math.pow(10, scale)),
-							'Timestamp': value.Timestamp
-						}
-					}
-					if (scale > 0) {
-						data.PriceData.Scale = this.countDecimals(value.Price)
-					}
-					ForexDataSeries.push(data)
-				})
-
 				const acc_payload = {
 					'command': 'account_info',
 					'account': process.env.ACCOUNT,
@@ -281,6 +209,23 @@ class backend {
 
 				let OracleDocumentID = 0
 
+				const StableDataSeries = []
+				Object.entries(stable).sort().forEach(([QuoteAsset, value]) => {
+					// log(value)
+					const scale = this.countDecimals(value.Price)
+					const data = {
+						'PriceData': {
+							'BaseAsset': 'XRP',
+							'QuoteAsset': this.currencyUTF8ToHex(QuoteAsset),
+							'AssetPrice': Math.round(value.Price * Math.pow(10, scale)),
+							'Timestamp': value.Timestamp
+						}
+					}
+					if (scale > 0) {
+						data.PriceData.Scale = this.countDecimals(value.Price)
+					}
+					StableDataSeries.push(data)
+				})
 				for (let i = 0; i < StableDataSeries.length; i += ChunkSize) {
 					const chunk = StableDataSeries.slice(i, i + ChunkSize)
 					const result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'stable token')
@@ -291,6 +236,23 @@ class backend {
 					OracleDocumentID++
 				}
 
+				const CryptoDataSeries = []
+				Object.entries(crypto).sort().forEach(([QuoteAsset, value]) => {
+					// log(value)
+					const scale = this.countDecimals(value.Price)
+					const data = {
+						'PriceData': {
+							'BaseAsset': 'XRP',
+							'QuoteAsset': this.currencyUTF8ToHex(QuoteAsset),
+							'AssetPrice': Math.round(value.Price * Math.pow(10, scale)),
+							'Timestamp': value.Timestamp
+						}
+					}
+					if (scale > 0) {
+						data.PriceData.Scale = this.countDecimals(value.Price)
+					}
+					CryptoDataSeries.push(data)
+				})
 				for (let i = 0; i < CryptoDataSeries.length; i += ChunkSize) {
 					const chunk = CryptoDataSeries.slice(i, i + ChunkSize)
 					const result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'crypto token')
@@ -301,6 +263,23 @@ class backend {
 					OracleDocumentID++
 				}
 
+				const CurrencyDataSeries = []
+				Object.entries(currency).sort().forEach(([QuoteAsset, value]) => {
+					// log(value)
+					const scale = this.countDecimals(value.Price)
+					const data = {
+						'PriceData': {
+							'BaseAsset': 'XRP',
+							'QuoteAsset': this.currencyUTF8ToHex(QuoteAsset),
+							'AssetPrice': Math.round(value.Price * Math.pow(10, scale)),
+							'Timestamp': value.Timestamp
+						}
+					}
+					if (scale > 0) {
+						data.PriceData.Scale = this.countDecimals(value.Price)
+					}
+					CurrencyDataSeries.push(data)
+				})
 				for (let i = 0; i < CurrencyDataSeries.length; i += ChunkSize) {
 					const chunk = CurrencyDataSeries.slice(i, i + ChunkSize)
 					const result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'currency')
@@ -310,6 +289,25 @@ class backend {
 					Sequence++
 					OracleDocumentID++
 				}
+
+
+				const ForexDataSeries = []
+				Object.entries(forex).sort().forEach(([QuoteAsset, value]) => {
+					// log(value)
+					const scale = this.countDecimals(value.Price)
+					const data = {
+						'PriceData': {
+							'BaseAsset': 'USD',
+							'QuoteAsset': QuoteAsset,
+							'AssetPrice': Math.round(value.Price * Math.pow(10, scale)),
+							'Timestamp': value.Timestamp
+						}
+					}
+					if (scale > 0) {
+						data.PriceData.Scale = this.countDecimals(value.Price)
+					}
+					ForexDataSeries.push(data)
+				})
 				for (let i = 0; i < ForexDataSeries.length; i += ChunkSize) {
 					const chunk = ForexDataSeries.slice(i, i + ChunkSize)
 					const result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'forex')
