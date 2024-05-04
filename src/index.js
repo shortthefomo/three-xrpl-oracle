@@ -25,7 +25,7 @@ class backend {
 		const stable = {}
 		const crypto = {}
 
-		let definitions
+		let definitions, socket
 		let connected = false
 		let mode = '1min' // every/1min/5min
 
