@@ -134,7 +134,7 @@ class backend {
 					return
 				}
 				if (Pause) {
-					await this.pause(1800)
+					await this.pause(1200)
 				}
 				
 				const CurrencyDataSeries = []
