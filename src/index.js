@@ -113,7 +113,7 @@ class backend {
 			},
 			connectFX() {
 				const self = this
-				const filter = ['JPY', 'EUR', 'MXN', 'ZAR', 'AUD', 'PHP', 'CNY', 'BRL', 'AED', 'KRW']
+				const filter = ['JPY', 'EUR', 'MXN', 'ZAR', 'AUD', 'PHP', 'CNY', 'BRL', 'AED', 'KRW', 'RUB', 'CAD', 'GBP', 'CHF', 'NZD', 'TWD', 'SGD', 'INR', 'NGN', 'CLP']
 				const socket = new WebSocket('wss://three-forex.panicbot.xyz')
 				socket.onopen = function () {
 					console.log(`FX socket connected :)`)
