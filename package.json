@@ -1,0 +1,31 @@
+{
+  "name": "three-xrpl-oracle",
+  "version": "0.0.1",
+  "description": "Submit oracle data to the XRPL",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "DEBUG=main* nodemon src/index.js",
+    "prod": "DEBUG=main* node src/index.js"
+  },
+  "author": "Lathan Britz",
+  "license": "MIT",
+  "devDependencies": {
+    "nodemon": "^2.0.7"
+  },
+  "dependencies": {
+    "@pm2/io": "^5.0.0",
+    "axios": "^0.24.0",
+    "debug": "^4.3.1",
+    "dotenv": "^10.0.0",
+    "events": "^3.3.0",
+    "express": "^4.17.2",
+    "fs": "^0.0.1-security",
+    "http": "^0.0.1-security",
+    "https": "^1.0.0",
+    "node-cache": "^5.1.2",
+    "ws": "^8.2.3",
+    "xrpl-accountlib": "^3.6.1",
+    "xrpl-client": "^2.4.0",
+    "xumm-sdk": "^1.3.1"
+  }
+}
