@@ -20,11 +20,12 @@ class backend {
 	constructor() {
 		dotenv.config()
 
+		const MIN_TIME = 300000 //60000 (1m) or 300000 (5m)
 		const xrpl = new XrplClient(['wss://s.devnet.rippletest.net:51233'])
-		let definitions, socket
 		const currency = {}
 		const stable = {}
 		const crypto = {}
+		let definitions, socket
 		let connected = false
 
 		Object.assign(this, {
@@ -256,7 +257,7 @@ class backend {
 					const token = 'XRP' + this.currencyHexToUTF8(element.PriceData.QuoteAsset)
 					pairs[token] = element.PriceData.Scale === undefined ? element.PriceData.AssetPrice : element.PriceData.AssetPrice / Math.pow(10, element.PriceData.Scale)
 
-					if (new Date().getTime() - element.PriceData.Timestamp < 60000) {
+					if (new Date().getTime() - element.PriceData.Timestamp < MIN_TIME) {
 						delete element.PriceData.Timestamp
 						series.push(element)
 					}
