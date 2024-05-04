@@ -26,6 +26,8 @@ class backend {
 		const currency = {}
 		const stable = {}
 		const crypto = {}
+		const forex = {}
+
 		let definitions, socket
 		let connected = false
 		let mode = '1min' // every/1min/5min
@@ -40,7 +42,7 @@ class backend {
 				// await this.deleteDocuments()
 				// return 
 
-				await this.connectWebsocket()
+				this.connectWebsocket()
 				await this.pause(5000)
 
 				const self = this
@@ -55,9 +57,10 @@ class backend {
 
 				setInterval(async () => {
 					if (mode === '1min') {
-						await self.chunckSubmit(10, false)
+						await self.chunckSubmit(false)
 					}
 					await self.getAggregatePrice()
+					// log(forex)
 				}, 60000)
 			},
 			async getAggregatePrice(asset = 'USD') {
@@ -113,7 +116,7 @@ class backend {
 				}
 				mode = '1min'
 			},
-			async connectWebsocket() {
+			connectWebsocket() {
 				const self = this
 				socket = new WebSocket('wss://three-oracle.panicbot.xyz')
 				socket.onmessage = function (message) {
@@ -148,6 +151,25 @@ class backend {
 						self.connectWebsocket()
 					}, 5000)
 				}
+				this.connectFX()
+			},
+			connectFX() {
+				const filter = ['JPY', 'EUR', 'MXN', 'ZAR', 'AUD', 'PHP', 'CNY', 'TWD', 'AED', 'KRW']
+				const socket = new WebSocket('wss://three-forex.panicbot.xyz')
+				socket.onopen = function () {
+					console.log(`FX socket connected :)`)
+				}
+				socket.onmessage = function (event) {
+					const json = JSON.parse(event.data)
+					Object.entries(json).forEach(([key, value]) => {
+						if (key !== 'rates') {
+							if (filter.includes(key.substring(3,6))) {
+								forex[key.substring(3,6)] = { Price: value.rate, Timestamp: new Date(value.time).getTime()}	
+							}
+						}
+					})
+				}
+				
 			},
 			async pause(milliseconds = 1000) {
 				return new Promise(resolve => {
@@ -155,7 +177,8 @@ class backend {
 					setTimeout(resolve, milliseconds)
 				})
 			},
-			async chunckSubmit(ChunkSize = 10, Pause = true) {
+			async chunckSubmit(Pause = true) {
+				const ChunkSize = 10
 				if (!connected) {
 					log('oracle websocket disconnected')
 					return
@@ -218,6 +241,24 @@ class backend {
 					StableDataSeries.push(data)
 				})
 
+				const ForexDataSeries = []
+				Object.entries(forex).sort().forEach(([QuoteAsset, value]) => {
+					// log(value)
+					const scale = this.countDecimals(value.Price)
+					const data = {
+						'PriceData': {
+							'BaseAsset': 'USD',
+							'QuoteAsset': QuoteAsset,
+							'AssetPrice': Math.round(value.Price * Math.pow(10, scale)),
+							'Timestamp': value.Timestamp
+						}
+					}
+					if (scale > 0) {
+						data.PriceData.Scale = this.countDecimals(value.Price)
+					}
+					ForexDataSeries.push(data)
+				})
+
 				const acc_payload = {
 					'command': 'account_info',
 					'account': process.env.ACCOUNT,
@@ -243,33 +284,39 @@ class backend {
 				for (let i = 0; i < StableDataSeries.length; i += ChunkSize) {
 					const chunk = StableDataSeries.slice(i, i + ChunkSize)
 					const result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'stable token')
-					Sequence++
 					if (result === 'tecARRAY_TOO_LARGE' || result === 'temMALFORMED') {
-						await this.deleteDocumentInstance(OracleDocumentID)
-						Sequence++
+						await this.deleteDocumentInstance(OracleDocumentID, Fee)
 					}
+					Sequence++
 					OracleDocumentID++
 				}
 
 				for (let i = 0; i < CryptoDataSeries.length; i += ChunkSize) {
 					const chunk = CryptoDataSeries.slice(i, i + ChunkSize)
 					const result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'crypto token')
-					Sequence++
 					if (result === 'tecARRAY_TOO_LARGE' || result === 'temMALFORMED') {
-						await this.deleteDocumentInstance(OracleDocumentID)
-						Sequence++
+						await this.deleteDocumentInstance(OracleDocumentID, Fee)
 					}
+					Sequence++
 					OracleDocumentID++
 				}
 
 				for (let i = 0; i < CurrencyDataSeries.length; i += ChunkSize) {
 					const chunk = CurrencyDataSeries.slice(i, i + ChunkSize)
 					const result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'currency')
-					Sequence++
 					if (result === 'tecARRAY_TOO_LARGE' || result === 'temMALFORMED') {
-						await this.deleteDocumentInstance(OracleDocumentID)
-						Sequence++
+						await this.deleteDocumentInstance(OracleDocumentID, Fee)
 					}
+					Sequence++
+					OracleDocumentID++
+				}
+				for (let i = 0; i < ForexDataSeries.length; i += ChunkSize) {
+					const chunk = ForexDataSeries.slice(i, i + ChunkSize)
+					const result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'forex')
+					if (result === 'tecARRAY_TOO_LARGE' || result === 'temMALFORMED') {
+						await this.deleteDocumentInstance(OracleDocumentID, Fee)
+					}
+					Sequence++
 					OracleDocumentID++
 				}
 			},
@@ -280,7 +327,7 @@ class backend {
 				const series = []
 				for (let index = 0; index < PriceDataSeries.length; index++) {
 					const element = PriceDataSeries[index]
-					const token = 'XRP' + this.currencyHexToUTF8(element.PriceData.QuoteAsset)
+					const token = element.PriceData.BaseAsset + this.currencyHexToUTF8(element.PriceData.QuoteAsset)
 					pairs[token] = element.PriceData.Scale === undefined ? element.PriceData.AssetPrice : element.PriceData.AssetPrice / Math.pow(10, element.PriceData.Scale)
 
 					if (new Date().getTime() - element.PriceData.Timestamp < MIN_TIME) {
@@ -390,11 +437,11 @@ class backend {
 				}
 
 			},
-			async deleteDocumentInstance(id) {
+			async deleteDocumentInstance(OracleDocumentID, Fee) {
 				const OracleDelete = {
 					'TransactionType': 'OracleDelete',
 					'Account': process.env.ACCOUNT,
-					'OracleDocumentID': id
+					'OracleDocumentID': OracleDocumentID
 				}
 
 				const acc_payload = {
@@ -409,18 +456,11 @@ class backend {
 				}
 				let Sequence = account_info.account_data.Sequence
 
-				const server_info = await xrpl.send({ 'command': 'server_info' })
-				if ('error' in server_info) {
-					log('error server_info', server_info)
-					return
-				}
-				const base_fee = server_info.info.validated_ledger.base_fee_xrp * 1_000_000
-				const Fee = String(base_fee)
-
-				OracleDelete.Fee = Fee
+				OracleDelete.Fee = String(Fee)
 				OracleDelete.Sequence = Sequence
-				log(OracleDelete)
-				await this.sign(OracleDelete)
+				// log(OracleDelete)
+				const result = await this.sign(OracleDelete)
+				console.log('OracleDelete', result.engine_result)
 			},
 		})
 	}
