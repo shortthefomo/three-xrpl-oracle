@@ -116,6 +116,21 @@ class backend {
 				const filter = ['JPY', 'EUR', 'MXN', 'ZAR', 'AUD', 'PHP', 'CNY', 'BRL', 'AED', 'KRW', 'RUB', 'CAD', 'GBP', 'CHF', 'NZD', 'TWD', 'SGD', 'INR', 'NGN', 'CLP']
 				const socket = new WebSocket('wss://three-forex.panicbot.xyz')
 				socket.onopen = function () {
+					socket.send(JSON.stringify({
+						request: 'SUBSCRIBE',
+						message: '',
+						channel: 'CLP'
+					}))
+					socket.send(JSON.stringify({
+						request: 'SUBSCRIBE',
+						message: '',
+						channel: 'MXN'
+					}))
+					socket.send(JSON.stringify({
+						request: 'SUBSCRIBE',
+						message: '',
+						channel: 'ZAR'
+					}))
 					console.log(`FX socket connected :)`)
 				}
 				socket.onmessage = function (event) {
