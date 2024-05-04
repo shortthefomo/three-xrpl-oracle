@@ -20,15 +20,10 @@ class backend {
 	constructor() {
 		dotenv.config()
 
-		const MIN_TIME = 300000 //60000 (1m) or 300000 (5m)
-		const MODE_MIN = 50 // 100/1000
 		const xrpl = new XrplClient(['wss://s.devnet.rippletest.net:51233'])
-		const currency = {}
-		const stable = {}
-		const crypto = {}
 		const forex = {}
 
-		let definitions, socket
+		let definitions
 		let connected = false
 		let mode = '1min' // every/1min/5min
 
@@ -42,7 +37,7 @@ class backend {
 				// await this.deleteDocuments()
 				// return 
 
-				this.connectWebsocket()
+				this.connectFX()
 				await this.pause(5000)
 
 				const self = this
@@ -110,56 +105,21 @@ class backend {
 					log('error account_info', account_info)
 					return
 				}
-				if ((account_info.account_data.Balance / 1_000_000) > MODE_MIN) {
+				if ((account_info.account_data.Balance / 1_000_000) > process.env.MODE_MIN) {
 					mode = 'every'
 					return
 				}
 				mode = '1min'
 			},
-			connectWebsocket() {
-				const self = this
-				socket = new WebSocket('wss://three-oracle.panicbot.xyz')
-				socket.onmessage = function (message) {
-					connected = true
-					const rawData = JSON.parse(message.data)
-					if ('oracle' in rawData) {
-						Object.entries(rawData.oracle).forEach(([key, value]) => {
-							if (key !== 'STATS') {
-								if (value.Token !== undefined) {
-									if (key.length > 3) {
-										stable[key] = value
-									}
-									if (key === 'BTC' || key === 'ETH' || key === 'BNB') {
-										crypto[key] = value
-									}
-									else if (key.length === 3) {
-										currency[key] = value
-									}
-								}
-							}
-						})
-					}
-					// log(data)
-				}
-				socket.onerror = function (error) {
-					log('error', error)
-				}
-				socket.onclose = function (event) {
-					connected = false
-					log('socket close')
-					setTimeout(() => {
-						self.connectWebsocket()
-					}, 5000)
-				}
-				this.connectFX()
-			},
 			connectFX() {
-				const filter = ['JPY', 'EUR', 'MXN', 'ZAR', 'AUD', 'PHP', 'CNY', 'TWD', 'AED', 'KRW']
+				const self = this
+				const filter = ['JPY', 'EUR', 'MXN', 'ZAR', 'AUD', 'PHP', 'CNY', 'BRL', 'AED', 'KRW']
 				const socket = new WebSocket('wss://three-forex.panicbot.xyz')
 				socket.onopen = function () {
 					console.log(`FX socket connected :)`)
 				}
 				socket.onmessage = function (event) {
+					connected = true
 					const json = JSON.parse(event.data)
 					Object.entries(json).forEach(([key, value]) => {
 						if (key !== 'rates') {
@@ -168,6 +128,13 @@ class backend {
 							}
 						}
 					})
+				}
+				socket.onclose = function (event) {
+					connected = false
+					log('socket close')
+					setTimeout(() => {
+						self.connectFX()
+					}, 5000)
 				}
 				
 			},
@@ -180,7 +147,7 @@ class backend {
 			async chunckSubmit(Pause = true) {
 				const ChunkSize = 10
 				if (!connected) {
-					log('oracle websocket disconnected')
+					log('FX socket disconnected')
 					return
 				}
 				if (Pause) {
@@ -235,105 +202,24 @@ class backend {
 					Sequence++
 					OracleDocumentID++
 				}
-
-				const StableDataSeries = []
-				Object.entries(stable).sort().forEach(([QuoteAsset, value]) => {
-					// log(value)
-					const scale = this.countDecimals(value.Price)
-					const data = {
-						'PriceData': {
-							'BaseAsset': 'XRP',
-							'QuoteAsset': this.currencyUTF8ToHex(QuoteAsset),
-							'AssetPrice': Math.round(value.Price * Math.pow(10, scale)),
-							'Timestamp': value.Timestamp
-						}
-					}
-					if (scale > 0) {
-						data.PriceData.Scale = this.countDecimals(value.Price)
-					}
-					StableDataSeries.push(data)
-				})
-				for (let i = 0; i < StableDataSeries.length; i += ChunkSize) {
-					const chunk = StableDataSeries.slice(i, i + ChunkSize)
-					const result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'stable token')
-					if (result === 'tecARRAY_TOO_LARGE' || result === 'temMALFORMED') {
-						await this.deleteDocumentInstance(OracleDocumentID, Fee)
-					}
-					Sequence++
-					OracleDocumentID++
-				}
-
-				const CryptoDataSeries = []
-				Object.entries(crypto).sort().forEach(([QuoteAsset, value]) => {
-					// log(value)
-					const scale = this.countDecimals(value.Price)
-					const data = {
-						'PriceData': {
-							'BaseAsset': 'XRP',
-							'QuoteAsset': this.currencyUTF8ToHex(QuoteAsset),
-							'AssetPrice': Math.round(value.Price * Math.pow(10, scale)),
-							'Timestamp': value.Timestamp
-						}
-					}
-					if (scale > 0) {
-						data.PriceData.Scale = this.countDecimals(value.Price)
-					}
-					CryptoDataSeries.push(data)
-				})
-				for (let i = 0; i < CryptoDataSeries.length; i += ChunkSize) {
-					const chunk = CryptoDataSeries.slice(i, i + ChunkSize)
-					const result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'crypto token')
-					if (result === 'tecARRAY_TOO_LARGE' || result === 'temMALFORMED') {
-						await this.deleteDocumentInstance(OracleDocumentID, Fee)
-					}
-					Sequence++
-					OracleDocumentID++
-				}
-
-				const CurrencyDataSeries = []
-				Object.entries(currency).sort().forEach(([QuoteAsset, value]) => {
-					// log(value)
-					const scale = this.countDecimals(value.Price)
-					const data = {
-						'PriceData': {
-							'BaseAsset': 'XRP',
-							'QuoteAsset': this.currencyUTF8ToHex(QuoteAsset),
-							'AssetPrice': Math.round(value.Price * Math.pow(10, scale)),
-							'Timestamp': value.Timestamp
-						}
-					}
-					if (scale > 0) {
-						data.PriceData.Scale = this.countDecimals(value.Price)
-					}
-					CurrencyDataSeries.push(data)
-				})
-				for (let i = 0; i < CurrencyDataSeries.length; i += ChunkSize) {
-					const chunk = CurrencyDataSeries.slice(i, i + ChunkSize)
-					const result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'currency')
-					if (result === 'tecARRAY_TOO_LARGE' || result === 'temMALFORMED') {
-						await this.deleteDocumentInstance(OracleDocumentID, Fee)
-					}
-					Sequence++
-					OracleDocumentID++
-				}
 			},
 			async submit(PriceDataSeries, Sequence, Fee, OracleDocumentID, AssetClass = 'currency') {
-				
-
 				const pairs = {}
 				const series = []
 				for (let index = 0; index < PriceDataSeries.length; index++) {
 					const element = PriceDataSeries[index]
 					const token = element.PriceData.BaseAsset + this.currencyHexToUTF8(element.PriceData.QuoteAsset)
 					pairs[token] = element.PriceData.Scale === undefined ? element.PriceData.AssetPrice : element.PriceData.AssetPrice / Math.pow(10, element.PriceData.Scale)
-
-					if (new Date().getTime() - element.PriceData.Timestamp < MIN_TIME) {
+					if (new Date().getTime() - element.PriceData.Timestamp < process.env.MIN_TIME) {
 						delete element.PriceData.Timestamp
 						series.push(element)
 					}
 				}
 
-				if (series.length === 0) { return }
+				if (series.length === 0) { 
+					log('data stale')
+					return 
+				}
 				// push data into the XRPL
 				const OracleSet = {
 					'TransactionType': 'OracleSet',
