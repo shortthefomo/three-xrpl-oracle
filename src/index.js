@@ -145,7 +145,8 @@ class backend {
 						'PriceData': {
 							'BaseAsset': 'XRP',
 							'QuoteAsset': this.currencyUTF8ToHex(QuoteAsset),
-							'AssetPrice': Math.round(value.Price * Math.pow(10, scale))
+							'AssetPrice': Math.round(value.Price * Math.pow(10, scale)),
+							'Timestamp': value.Timestamp
 						}
 					}
 					if (scale > 0) {
@@ -162,7 +163,8 @@ class backend {
 						'PriceData': {
 							'BaseAsset': 'XRP',
 							'QuoteAsset': this.currencyUTF8ToHex(QuoteAsset),
-							'AssetPrice': Math.round(value.Price * Math.pow(10, scale))
+							'AssetPrice': Math.round(value.Price * Math.pow(10, scale)),
+							'Timestamp': value.Timestamp
 						}
 					}
 					if (scale > 0) {
@@ -179,7 +181,8 @@ class backend {
 						'PriceData': {
 							'BaseAsset': 'XRP',
 							'QuoteAsset': this.currencyUTF8ToHex(QuoteAsset),
-							'AssetPrice': Math.round(value.Price * Math.pow(10, scale))
+							'AssetPrice': Math.round(value.Price * Math.pow(10, scale)),
+							'Timestamp': value.Timestamp
 						}
 					}
 					if (scale > 0) {
@@ -244,14 +247,22 @@ class backend {
 				}
 			},
 			async submit(PriceDataSeries, Sequence, Fee, OracleDocumentID, AssetClass = 'currency') {
-				if (PriceDataSeries.length === 0) { return }
+				
 
 				const pairs = {}
+				const series = []
 				for (let index = 0; index < PriceDataSeries.length; index++) {
 					const element = PriceDataSeries[index]
 					const token = 'XRP' + this.currencyHexToUTF8(element.PriceData.QuoteAsset)
 					pairs[token] = element.PriceData.Scale === undefined ? element.PriceData.AssetPrice : element.PriceData.AssetPrice / Math.pow(10, element.PriceData.Scale)
+
+					if (new Date().getTime() - element.PriceData.Timestamp < 60000) {
+						delete element.PriceData.Timestamp
+						series.push(element)
+					}
 				}
+
+				if (series.length === 0) { return }
 				// push data into the XRPL
 				const OracleSet = {
 					'TransactionType': 'OracleSet',
@@ -262,7 +273,7 @@ class backend {
 					'LastUpdateTime': (new Date().getTime() / 1000), // WHY NO ripple time stamp!
 					// # "currency"
 					'AssetClass': Buffer.from(AssetClass, 'utf-8').toString('hex').toUpperCase(),
-					'PriceDataSeries': PriceDataSeries,
+					'PriceDataSeries': series,
 					'Sequence': Sequence,
 					'Fee': Fee
 				}
