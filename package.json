@@ -10,13 +10,13 @@
   "author": "Lathan Britz",
   "license": "MIT",
   "devDependencies": {
-    "nodemon": "^2.0.7"
+    "nodemon": "^3.1.0"
   },
   "dependencies": {
     "@pm2/io": "^5.0.0",
-    "axios": "^0.24.0",
+    "axios": "^1.6.8",
     "debug": "^4.3.1",
-    "dotenv": "^10.0.0",
+    "dotenv": "^16.4.5",
     "events": "^3.3.0",
     "express": "^4.17.2",
     "fs": "^0.0.1-security",
