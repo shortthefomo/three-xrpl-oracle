@@ -186,7 +186,7 @@ class backend {
 				if (Pause) {
 					await this.pause(1200)
 				}
-				
+
 				const acc_payload = {
 					'command': 'account_info',
 					'account': process.env.ACCOUNT,
@@ -208,6 +208,33 @@ class backend {
 				const Fee = String(base_fee)
 
 				let OracleDocumentID = 0
+
+				const ForexDataSeries = []
+				Object.entries(forex).sort().forEach(([QuoteAsset, value]) => {
+					// log(value)
+					const scale = this.countDecimals(value.Price)
+					const data = {
+						'PriceData': {
+							'BaseAsset': 'USD',
+							'QuoteAsset': QuoteAsset,
+							'AssetPrice': Math.round(value.Price * Math.pow(10, scale)),
+							'Timestamp': value.Timestamp
+						}
+					}
+					if (scale > 0) {
+						data.PriceData.Scale = this.countDecimals(value.Price)
+					}
+					ForexDataSeries.push(data)
+				})
+				for (let i = 0; i < ForexDataSeries.length; i += ChunkSize) {
+					const chunk = ForexDataSeries.slice(i, i + ChunkSize)
+					const result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'forex')
+					if (result === 'tecARRAY_TOO_LARGE' || result === 'temMALFORMED') {
+						await this.deleteDocumentInstance(OracleDocumentID, Fee)
+					}
+					Sequence++
+					OracleDocumentID++
+				}
 
 				const StableDataSeries = []
 				Object.entries(stable).sort().forEach(([QuoteAsset, value]) => {
@@ -283,34 +310,6 @@ class backend {
 				for (let i = 0; i < CurrencyDataSeries.length; i += ChunkSize) {
 					const chunk = CurrencyDataSeries.slice(i, i + ChunkSize)
 					const result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'currency')
-					if (result === 'tecARRAY_TOO_LARGE' || result === 'temMALFORMED') {
-						await this.deleteDocumentInstance(OracleDocumentID, Fee)
-					}
-					Sequence++
-					OracleDocumentID++
-				}
-
-
-				const ForexDataSeries = []
-				Object.entries(forex).sort().forEach(([QuoteAsset, value]) => {
-					// log(value)
-					const scale = this.countDecimals(value.Price)
-					const data = {
-						'PriceData': {
-							'BaseAsset': 'USD',
-							'QuoteAsset': QuoteAsset,
-							'AssetPrice': Math.round(value.Price * Math.pow(10, scale)),
-							'Timestamp': value.Timestamp
-						}
-					}
-					if (scale > 0) {
-						data.PriceData.Scale = this.countDecimals(value.Price)
-					}
-					ForexDataSeries.push(data)
-				})
-				for (let i = 0; i < ForexDataSeries.length; i += ChunkSize) {
-					const chunk = ForexDataSeries.slice(i, i + ChunkSize)
-					const result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'forex')
 					if (result === 'tecARRAY_TOO_LARGE' || result === 'temMALFORMED') {
 						await this.deleteDocumentInstance(OracleDocumentID, Fee)
 					}
