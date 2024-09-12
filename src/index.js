@@ -20,13 +20,14 @@ class backend {
 	constructor() {
 		dotenv.config()
 
-		const xrpl = new XrplClient(['wss://s.devnet.rippletest.net:51233'])
+		const xrpl = new XrplClient(['wss://s.devnet.rippletest.net:51233', 'wss://clio.devnet.rippletest.net:51233'])
 		const currency = {}
 		const stable = {}
 		const crypto = {}
 
 		let definitions, socket
 		let connected = false
+		let ledger_errors = 0
 		let mode = '1min' // every/1min/5min
 
 		Object.assign(this, {
@@ -58,6 +59,8 @@ class backend {
 					}
 					await self.getAggregatePrice()
 				}, 60000)
+
+				this.checkConnected()
 			},
 			async getAggregatePrice(asset = 'USD') {
 				const command = {
@@ -112,8 +115,39 @@ class backend {
 				}
 				mode = '1min'
 			},
+			checkConnected() {
+				const self = this
+				setInterval(async () => {
+					if (!connected) {
+						self.connectWebsocket()
+					}
+					self.checkConnection()
+				}, 3800)
+			},
+			async checkConnection() {
+                const books = {
+                    'id': 4,
+                    'command': 'book_offers',
+                    'taker': 'rThREeXrp54XTQueDowPV1RxmkEAGUmg8',
+                    'taker_gets': {'currency': 'USD', 'issuer': 'rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B' },
+                    'taker_pays': {'currency': 'XRP' },
+                    'limit': 10
+                }
+
+                const result = await xrpl.send(books)
+                if ('error' in result) {
+                    ledger_errors++
+                    log('error', result.error)
+                }
+                if (ledger_errors > 2) {
+                    xrpl.reinstate({forceNextUplink: true})
+                    log('reinstate client', await xrpl.send({ command: 'server_info' }))
+                    ledger_errors = 0
+                }
+            },
 			connectWebsocket() {
 				const self = this
+				log('connecting to wss://three-oracle.panicbot.xyz')
 				socket = new WebSocket('wss://three-oracle.panicbot.xyz')
 				socket.onmessage = function (message) {
 					connected = true
@@ -142,10 +176,10 @@ class backend {
 				}
 				socket.onclose = function (event) {
 					connected = false
-					log('socket close')
+					log('socket close', event)
 					setTimeout(() => {
 						self.connectWebsocket()
-					}, 5000)
+					}, 1000)
 				}
 			},
 			async pause(milliseconds = 1000) {
