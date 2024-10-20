@@ -324,6 +324,9 @@ class backend  extends EventEmitter {
 					'Fee': Fee
 				}
 				const result = await this.sign(OracleSet)
+				if (result.engine_result === 'tefPAST_SEQ') {
+					await this.submit(PriceDataSeries, Sequence++, Fee, OracleDocumentID, AssetClass = 'currency')
+				}
 				console.log('OracleDocumentID', OracleDocumentID, result.engine_result, pairs)
 
 				// if (result.engine_result === 'temMALFORMED') {
