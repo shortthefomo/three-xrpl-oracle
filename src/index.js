@@ -43,7 +43,7 @@ class backend extends EventEmitter {
 				const callback = async (event) => {
 					log('ledger close', 'mode:' + mode)
 					if (mode === 'every') {
-						self.emit('chunk-submit-pause')
+						self.emit('chunk-submit')
 					}
 					this.accountBalance() // dont wait!!
 				}
@@ -51,7 +51,7 @@ class backend extends EventEmitter {
 
 				setInterval(async () => {
 					if (mode === '1min') {
-						self.emit('chunk-submit')
+						self.emit('chunk-submit-pause')
 					}
 					self.emit('aggregate-price')
 				}, 60_000)
