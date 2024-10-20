@@ -169,7 +169,7 @@ class backend  extends EventEmitter {
 					connected = false
 					log('socket close')
 					setTimeout(() => {
-						self.emit('reconnect-fx')
+						self.emit('reconnect-websocket')
 					}, 5_000)
 				}
 			},
