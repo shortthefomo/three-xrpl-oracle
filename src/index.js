@@ -293,8 +293,6 @@ class backend  extends EventEmitter {
 				}
 			},
 			async submit(PriceDataSeries, Sequence, Fee, OracleDocumentID, AssetClass = 'currency') {
-				
-
 				const pairs = {}
 				const series = []
 				for (let index = 0; index < PriceDataSeries.length; index++) {
