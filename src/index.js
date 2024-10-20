@@ -2,6 +2,7 @@
 
 const { XrplClient } = require('xrpl-client')
 const { derive, sign, XrplDefinitions } = require('xrpl-accountlib')
+const EventEmitter = require('events')
 const WebSocket = require('ws')
 const Axios = require('axios')
 const dotenv = require('dotenv')
@@ -16,11 +17,13 @@ io.init({
 
 dotenv.config()
 
-class backend {
-	constructor() {
+class backend extends EventEmitter {
+	constructor(Config) {
+		super()
 		dotenv.config()
-
-		const xrpl = new XrplClient(['wss://s.devnet.rippletest.net:51233'])
+		
+		const xrpl = new XrplClient((process.env.XRPL_CLIENT === 'wss://s.devnet.rippletest.net:51233') ? [process.env.XRPL_CLIENT] : [process.env.XRPL_CLIENT, 'wss://xrplcluster.com', 'wss://xrpl.link', 'wss://s2.ripple.com'])
+		let ledger_errors = 0
 		const forex = {}
 
 		let definitions
@@ -29,22 +32,18 @@ class backend {
 
 		Object.assign(this, {
 			async run() {
-				log('running')
-
-				const liveDefinitions = await xrpl.send({ command: "server_definitions" })
+				const liveDefinitions = await xrpl.send({ command: 'server_definitions' })
 				definitions = new XrplDefinitions(liveDefinitions)
 
-				// await this.deleteDocuments()
-				// return 
-
 				this.connectFX()
+				this.eventListeners()
 				await this.pause(5000)
 
 				const self = this
 				const callback = async (event) => {
 					log('ledger close', 'mode:' + mode)
 					if (mode === 'every') {
-						await self.chunckSubmit()
+						self.emit('chunk-submit')
 					}
 					this.accountBalance() // dont wait!!
 				}
@@ -52,11 +51,29 @@ class backend {
 
 				setInterval(async () => {
 					if (mode === '1min') {
-						await self.chunckSubmit(false)
+						self.emit('chunk-submit')
 					}
-					await self.getAggregatePrice()
-					// log(forex)
-				}, 60000)
+					self.emit('aggregate-price')
+				}, 60_000)
+
+				setInterval(() => {
+					self.emit('check-connection')
+                }, 10_000)
+			},
+			eventListeners() {
+				this.addListener('chunk-submit', async () => {
+					await this.chunckSubmit(false)
+				})
+				this.addListener('aggregate-price', async () => {
+					await this.getAggregatePrice()
+				})
+				this.addListener('check-connection', async () => {
+					this.checkConnection()
+				})
+				this.addListener('reconnect-fx', async () => {
+					await this.pause(10_000)
+					this.connectFX()
+				})
 			},
 			async getAggregatePrice(asset = 'USD') {
 				const command = {
@@ -112,9 +129,10 @@ class backend {
 				mode = '1min'
 			},
 			connectFX() {
+				log('connecting... FX')
 				const self = this
 				const filter = ['JPY', 'EUR', 'MXN', 'ZAR', 'AUD', 'PHP', 'CNY', 'BRL', 'AED', 'KRW', 'RUB', 'CAD', 'GBP', 'CHF', 'NZD', 'TWD', 'SGD', 'INR', 'NGN', 'CLP']
-				const socket = new WebSocket('wss://three-forex.panicbot.xyz')
+				const socket = new WebSocket(process.env.ORACLE_DATA)
 				socket.onopen = function () {
 					socket.send(JSON.stringify({
 						request: 'SUBSCRIBE',
@@ -147,9 +165,7 @@ class backend {
 				socket.onclose = function (event) {
 					connected = false
 					log('socket close')
-					setTimeout(() => {
-						self.connectFX()
-					}, 5000)
+					self.emit('reconnect-fx')
 				}
 				
 			},
@@ -241,7 +257,7 @@ class backend {
 					'Account': process.env.ACCOUNT,
 					'OracleDocumentID': OracleDocumentID,
 					//# "provider"
-					'Provider': Buffer.from('https://threexrp.dev', 'utf-8').toString('hex').toUpperCase(),
+					'Provider': Buffer.from(process.env.URL, 'utf-8').toString('hex').toUpperCase(),
 					'LastUpdateTime': (new Date().getTime() / 1000), // WHY NO ripple time stamp!
 					// # "currency"
 					'AssetClass': Buffer.from(AssetClass, 'utf-8').toString('hex').toUpperCase(),
@@ -259,17 +275,11 @@ class backend {
 			},
 			async sign(tx_json) {
 				const master = derive.familySeed(process.env.SECRET)
-				// log('sign', tx_json)
 				const { signedTransaction } = sign(tx_json, master, definitions)
-				// console.log('signedTransaction', signedTransaction)
-
-
 				const transaction = await xrpl.send({
 					command: 'submit',
 					tx_blob: signedTransaction
 				})
-				// log(tx_json.PriceDataSeries)
-				// console.log('transaction', transaction)
 				return transaction
 			},
 			currencyUTF8ToHex(code) {
@@ -360,6 +370,29 @@ class backend {
 				const result = await this.sign(OracleDelete)
 				console.log('OracleDelete', result.engine_result)
 			},
+			async checkConnection() {
+				log('checking connection')
+                const books = {
+                    'id': 4,
+                    'command': 'book_offers',
+                    'taker': 'rrrrrrrrrrrrrrrrrrrrBZbvji',
+                    'taker_gets': {'currency': 'USD', 'issuer': 'rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B' },
+                    'taker_pays': {'currency': 'XRP' },
+                    'limit': 100
+                }
+
+                const result = await xrpl.send(books)
+                if ('error' in result) {
+                    ledger_errors++
+                    log('error', result.error)
+                }
+                if (ledger_errors > 2) {
+                    xrpl.reinstate({forceNextUplink: true})
+                    log('reinstate client', await xrpl.send({ command: 'server_info' }))
+                    ledger_errors = 0
+                }
+                
+            },
 		})
 	}
 }
