@@ -315,7 +315,7 @@ class backend  extends EventEmitter {
 					'Account': process.env.ACCOUNT,
 					'OracleDocumentID': OracleDocumentID,
 					//# "provider"
-					'Provider': Buffer.from('https://threexrp.dev', 'utf-8').toString('hex').toUpperCase(),
+					'Provider': Buffer.from(process.env.URL, 'utf-8').toString('hex').toUpperCase(),
 					'LastUpdateTime': (new Date().getTime() / 1000), // WHY NO ripple time stamp!
 					// # "currency"
 					'AssetClass': Buffer.from(AssetClass, 'utf-8').toString('hex').toUpperCase(),
@@ -325,7 +325,7 @@ class backend  extends EventEmitter {
 				}
 				const result = await this.sign(OracleSet)
 				if (result.engine_result === 'tefPAST_SEQ') {
-					await this.submit(PriceDataSeries, Sequence++, Fee, OracleDocumentID, AssetClass = 'currency')
+					await this.submit(PriceDataSeries, Sequence++, Fee, OracleDocumentID, AssetClass)
 				}
 				console.log('OracleDocumentID', OracleDocumentID, result.engine_result, pairs)
 
