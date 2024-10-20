@@ -232,7 +232,7 @@ class backend  extends EventEmitter {
 					const chunk = StableDataSeries.slice(i, i + ChunkSize)
 					const result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'stable token')
 					if (result === 'tecARRAY_TOO_LARGE' || result === 'temMALFORMED') {
-						await this.deleteDocumentInstance(OracleDocumentID, Fee)
+						Sequence = await this.deleteDocumentInstance(OracleDocumentID, Fee)
 					}
 					Sequence++
 					OracleDocumentID++
@@ -259,7 +259,7 @@ class backend  extends EventEmitter {
 					const chunk = CryptoDataSeries.slice(i, i + ChunkSize)
 					const result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'crypto token')
 					if (result === 'tecARRAY_TOO_LARGE' || result === 'temMALFORMED') {
-						await this.deleteDocumentInstance(OracleDocumentID, Fee)
+						Sequence = await this.deleteDocumentInstance(OracleDocumentID, Fee)
 					}
 					Sequence++
 					OracleDocumentID++
@@ -286,7 +286,7 @@ class backend  extends EventEmitter {
 					const chunk = CurrencyDataSeries.slice(i, i + ChunkSize)
 					const result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'currency')
 					if (result === 'tecARRAY_TOO_LARGE' || result === 'temMALFORMED') {
-						await this.deleteDocumentInstance(OracleDocumentID, Fee)
+						Sequence = await this.deleteDocumentInstance(OracleDocumentID, Fee)
 					}
 					Sequence++
 					OracleDocumentID++
@@ -334,17 +334,11 @@ class backend  extends EventEmitter {
 			},
 			async sign(tx_json) {
 				const master = derive.familySeed(process.env.SECRET)
-				// log('sign', tx_json)
 				const { signedTransaction } = sign(tx_json, master, definitions)
-				// console.log('signedTransaction', signedTransaction)
-
-
 				const transaction = await xrpl.send({
 					command: 'submit',
 					tx_blob: signedTransaction
 				})
-				// log(tx_json.PriceDataSeries)
-				// console.log('transaction', transaction)
 				return transaction
 			},
 			currencyUTF8ToHex(code) {
@@ -434,6 +428,7 @@ class backend  extends EventEmitter {
 				// log(OracleDelete)
 				const result = await this.sign(OracleDelete)
 				console.log('OracleDelete', result.engine_result)
+				return Sequence
 			},
 			async checkConnection() {
 				log('checking connection')
