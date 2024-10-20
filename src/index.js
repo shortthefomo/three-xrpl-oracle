@@ -2,6 +2,7 @@
 
 const { XrplClient } = require('xrpl-client')
 const { derive, sign, XrplDefinitions } = require('xrpl-accountlib')
+const EventEmitter = require('events')
 const WebSocket = require('ws')
 const Axios = require('axios')
 const dotenv = require('dotenv')
@@ -16,14 +17,16 @@ io.init({
 
 dotenv.config()
 
-class backend {
+class backend  extends EventEmitter {
 	constructor() {
+		super()
 		dotenv.config()
 
-		const xrpl = new XrplClient(['wss://s.devnet.rippletest.net:51233'])
+		const xrpl = new XrplClient((process.env.XRPL_CLIENT === 'wss://s.devnet.rippletest.net:51233') ? [process.env.XRPL_CLIENT] : [process.env.XRPL_CLIENT, 'wss://xrplcluster.com', 'wss://xrpl.link', 'wss://s2.ripple.com'])
 		const currency = {}
 		const stable = {}
 		const crypto = {}
+		let ledger_errors = 0
 
 		let definitions, socket
 		let connected = false
@@ -40,13 +43,14 @@ class backend {
 				// return 
 
 				this.connectWebsocket()
+				this.eventListeners()
 				await this.pause(5000)
 
 				const self = this
 				const callback = async (event) => {
 					log('ledger close', 'mode:' + mode)
 					if (mode === 'every') {
-						await self.chunckSubmit()
+						self.emit('chunk-submit')
 					}
 					this.accountBalance() // dont wait!!
 				}
@@ -54,10 +58,31 @@ class backend {
 
 				setInterval(async () => {
 					if (mode === '1min') {
-						await self.chunckSubmit(false)
+						self.emit('chunk-submit-pause')
 					}
-					await self.getAggregatePrice()
-				}, 60000)
+					self.emit('aggregate-price')
+				}, 60_000)
+				setInterval(() => {
+					self.emit('check-connection')
+				}, 10_000)
+			},
+			eventListeners() {
+				this.addListener('chunk-submit', async () => {
+					await this.chunckSubmit()
+				})
+				this.addListener('chunk-submit-pause', async () => {
+					await this.chunckSubmit(false)
+				})
+				this.addListener('aggregate-price', async () => {
+					await this.getAggregatePrice()
+				})
+				this.addListener('check-connection', async () => {
+					this.checkConnection()
+				})
+				this.addListener('reconnect-websocket', async () => {
+					await this.pause(10_000)
+					this.connectWebsocket()
+				})
 			},
 			async getAggregatePrice(asset = 'USD') {
 				const command = {
@@ -114,7 +139,7 @@ class backend {
 			},
 			connectWebsocket() {
 				const self = this
-				socket = new WebSocket('wss://three-oracle.panicbot.xyz')
+				socket = new WebSocket(process.env.ORACLE_DATA)
 				socket.onmessage = function (message) {
 					connected = true
 					const rawData = JSON.parse(message.data)
@@ -144,8 +169,8 @@ class backend {
 					connected = false
 					log('socket close')
 					setTimeout(() => {
-						self.connectWebsocket()
-					}, 5000)
+						self.emit('reconnect-fx')
+					}, 5_000)
 				}
 			},
 			async pause(milliseconds = 1000) {
@@ -408,6 +433,29 @@ class backend {
 				// log(OracleDelete)
 				const result = await this.sign(OracleDelete)
 				console.log('OracleDelete', result.engine_result)
+			},
+			async checkConnection() {
+				log('checking connection')
+				const books = {
+					'id': 4,
+					'command': 'book_offers',
+					'taker': 'rrrrrrrrrrrrrrrrrrrrBZbvji',
+					'taker_gets': {'currency': 'USD', 'issuer': 'rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B' },
+					'taker_pays': {'currency': 'XRP' },
+					'limit': 100
+				}
+
+				const result = await xrpl.send(books)
+				if ('error' in result) {
+					ledger_errors++
+					log('error', result.error)
+				}
+				if (ledger_errors > 2) {
+					xrpl.reinstate({forceNextUplink: true})
+					log('reinstate client', await xrpl.send({ command: 'server_info' }))
+					ledger_errors = 0
+				}
+
 			},
 		})
 	}
