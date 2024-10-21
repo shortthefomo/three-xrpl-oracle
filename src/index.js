@@ -204,7 +204,7 @@ class backend  extends EventEmitter {
 				}
 
 				
-				let Sequence = this.getSequence()
+				let Sequence = await this.getSequence()
 				if (Sequence === undefined) { return }
 
 				const server_info = await xrpl.send({ 'command': 'server_info' })
@@ -236,9 +236,13 @@ class backend  extends EventEmitter {
 				})
 				for (let i = 0; i < StableDataSeries.length; i += ChunkSize) {
 					const chunk = StableDataSeries.slice(i, i + ChunkSize)
-					const result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'stable token')
+					let result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'stable token')
 					if (result === 'tecARRAY_TOO_LARGE' || result === 'temMALFORMED') {
 						Sequence = await this.deleteDocumentInstance(OracleDocumentID, Fee)
+					}
+					if (result === 'tefPAST_SEQ') {
+						Sequence = await this.getSequence()
+						result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'stable token')
 					}
 					Sequence++
 					OracleDocumentID++
@@ -267,6 +271,10 @@ class backend  extends EventEmitter {
 					if (result === 'tecARRAY_TOO_LARGE' || result === 'temMALFORMED') {
 						Sequence = await this.deleteDocumentInstance(OracleDocumentID, Fee)
 					}
+					if (result === 'tefPAST_SEQ') {
+						Sequence = await this.getSequence()
+						result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'crypto token')
+					}
 					Sequence++
 					OracleDocumentID++
 				}
@@ -293,6 +301,10 @@ class backend  extends EventEmitter {
 					const result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'currency')
 					if (result === 'tecARRAY_TOO_LARGE' || result === 'temMALFORMED') {
 						Sequence = await this.deleteDocumentInstance(OracleDocumentID, Fee)
+					}
+					if (result === 'tefPAST_SEQ') {
+						Sequence = await this.getSequence()
+						result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'currency')
 					}
 					Sequence++
 					OracleDocumentID++
