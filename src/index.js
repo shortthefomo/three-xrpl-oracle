@@ -179,16 +179,7 @@ class backend  extends EventEmitter {
 					setTimeout(resolve, milliseconds)
 				})
 			},
-			async chunckSubmit(Pause = true) {
-				const ChunkSize = 10
-				if (!connected) {
-					log('oracle websocket disconnected')
-					return
-				}
-				if (Pause) {
-					await this.pause(1200)
-				}
-
+			async getSequence() {
 				const acc_payload = {
 					'command': 'account_info',
 					'account': process.env.ACCOUNT,
@@ -199,7 +190,22 @@ class backend  extends EventEmitter {
 					log('error account_info', account_info)
 					return
 				}
-				let Sequence = account_info.account_data.Sequence
+				log('account_info', account_info.account_data)
+				return account_info.account_data.Sequence
+			},
+			async chunckSubmit(Pause = true) {
+				const ChunkSize = 10
+				if (!connected) {
+					log('oracle websocket disconnected')
+					return
+				}
+				if (Pause) {
+					await this.pause(1200)
+				}
+
+				
+				let Sequence = this.getSequence()
+				if (Sequence === undefined) { return }
 
 				const server_info = await xrpl.send({ 'command': 'server_info' })
 				if ('error' in server_info) {
