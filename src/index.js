@@ -5,6 +5,7 @@ const { derive, sign, XrplDefinitions } = require('xrpl-accountlib')
 const EventEmitter = require('events')
 const WebSocket = require('ws')
 const Axios = require('axios')
+const { open } = require('lmdb')
 const dotenv = require('dotenv')
 const debug = require('debug')
 const log = debug('main:backend')
@@ -22,12 +23,16 @@ class backend  extends EventEmitter {
 		super()
 		dotenv.config()
 
+		let myDB = open({
+			path: 'db/attestation-db',
+			compression: false,
+		})
 		const xrpl = new XrplClient((process.env.XRPL_CLIENT === 'wss://s.devnet.rippletest.net:51233') ? [process.env.XRPL_CLIENT] : [process.env.XRPL_CLIENT, 'wss://xrplcluster.com', 'wss://xrpl.link', 'wss://s2.ripple.com'])
 		const currency = {}
 		const stable = {}
 		const crypto = {}
 		let ledger_errors = 0
-
+		let ledger_index
 		let definitions, socket
 		let connected = false
 		let mode = '1min' // every/1min/5min
@@ -49,6 +54,7 @@ class backend  extends EventEmitter {
 				const self = this
 				const callback = async (event) => {
 					log('ledger close', 'mode:' + mode)
+					ledger_index = event.ledger_index
 					if (mode === 'every') {
 						self.emit('chunk-submit')
 					}
@@ -236,7 +242,7 @@ class backend  extends EventEmitter {
 				})
 				for (let i = 0; i < StableDataSeries.length; i += ChunkSize) {
 					const chunk = StableDataSeries.slice(i, i + ChunkSize)
-					let result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'stable token')
+					let result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'stable-token')
 					if (result === 'tecARRAY_TOO_LARGE' || result === 'temMALFORMED') {
 						Sequence = await this.deleteDocumentInstance(OracleDocumentID, Fee)
 					}
@@ -325,25 +331,36 @@ class backend  extends EventEmitter {
 				}
 
 				if (series.length === 0) { return }
+
 				// push data into the XRPL
 				const OracleSet = {
 					'TransactionType': 'OracleSet',
 					'Account': process.env.ACCOUNT,
 					'OracleDocumentID': OracleDocumentID,
 					//# "provider"
-					'Provider': Buffer.from(process.env.URL, 'utf-8').toString('hex').toUpperCase(),
+					'Provider': Buffer.from(process.env.PROVIDER, 'utf-8').toString('hex').toUpperCase(),
 					'LastUpdateTime': (new Date().getTime() / 1000), // WHY NO ripple time stamp!
-					// # "currency"
+					// # "currency" 
 					'AssetClass': Buffer.from(AssetClass, 'utf-8').toString('hex').toUpperCase(),
 					'PriceDataSeries': series,
 					'Sequence': Sequence,
 					'Fee': Fee
 				}
+
+				if (ledger_index !== undefined) {
+					// push data into lmdb store
+					const data = (AssetClass === 'currency') ? currency : (AssetClass === 'stable token') ? stable : crypto
+					const token_class = (AssetClass === 'currency') ? 'currency' : (AssetClass === 'stable token') ? 'stable-token' : 'crypto-token'
+					log('writing data', `${token_class}:${ledger_index}:${Sequence}:${OracleDocumentID}`)
+					await myDB.put(`${token_class}:${ledger_index}:${Sequence}:${OracleDocumentID}`, data)
+					OracleSet.URI = Buffer.from(process.env.URL + `/${token_class}:${ledger_index}:${Sequence}:${OracleDocumentID}`, 'utf-8').toString('hex').toUpperCase()
+				}
 				const result = await this.sign(OracleSet)
+				
 				if (result.engine_result === 'tefPAST_SEQ') {
 					await this.submit(PriceDataSeries, Sequence++, Fee, OracleDocumentID, AssetClass)
 				}
-				console.log('OracleDocumentID', OracleDocumentID, result.engine_result, pairs)
+				console.log('OracleDocumentID', OracleDocumentID, result.engine_result, pairs, result?.tx_json.hash)
 
 				// if (result.engine_result === 'temMALFORMED') {
 				// 	log('OracleSet', OracleSet.PriceDataSeries)
