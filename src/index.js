@@ -361,7 +361,7 @@ class backend  extends EventEmitter {
 					log('writing data', `${token_class}:${ledger_index}:${Sequence}:${OracleDocumentID}`)
 					await myDB.put(`${token_class}:${ledger_index}:${Sequence}:${OracleDocumentID}`, data)
 					OracleSet.URI = Buffer.from(process.env.URL + `/${token_class}:${ledger_index}:${Sequence}:${OracleDocumentID}`, 'utf-8').toString('hex').toUpperCase()
-					log('URI', process.env.URL + `/${token_class}:${ledger_index}:${Sequence}:${OracleDocumentID}`)
+					// log('URI', process.env.URL + `/${token_class}:${ledger_index}:${Sequence}:${OracleDocumentID}`)
 				}
 				const result = await this.sign(OracleSet)
 				
