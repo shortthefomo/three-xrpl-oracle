@@ -6,6 +6,9 @@ const EventEmitter = require('events')
 const WebSocket = require('ws')
 const Axios = require('axios')
 const { open } = require('lmdb')
+const app = require('express')()
+const http = require('http')
+const fs = require( 'fs')
 const dotenv = require('dotenv')
 const debug = require('debug')
 const log = debug('main:backend')
@@ -18,6 +21,11 @@ io.init({
 
 dotenv.config()
 
+log('using http: for webhead: ' + (process.env.APP_PORT))
+
+let httpServer = http.createServer(app).listen(process.env.APP_PORT)
+
+// header rooster:'cock a doodle doo'
 class backend  extends EventEmitter {
 	constructor() {
 		super()
@@ -35,7 +43,7 @@ class backend  extends EventEmitter {
 		let ledger_index
 		let definitions, socket
 		let connected = false
-		let mode = '1min' // every/1min/5min
+		let mode = 'every' // every/1min/5min
 
 		Object.assign(this, {
 			async run() {
@@ -346,7 +354,6 @@ class backend  extends EventEmitter {
 					'Sequence': Sequence,
 					'Fee': Fee
 				}
-
 				if (ledger_index !== undefined) {
 					// push data into lmdb store
 					const data = (AssetClass === 'currency') ? currency : (AssetClass === 'stable token') ? stable : crypto
@@ -354,6 +361,7 @@ class backend  extends EventEmitter {
 					log('writing data', `${token_class}:${ledger_index}:${Sequence}:${OracleDocumentID}`)
 					await myDB.put(`${token_class}:${ledger_index}:${Sequence}:${OracleDocumentID}`, data)
 					OracleSet.URI = Buffer.from(process.env.URL + `/${token_class}:${ledger_index}:${Sequence}:${OracleDocumentID}`, 'utf-8').toString('hex').toUpperCase()
+					log('URI', process.env.URL + `/${token_class}:${ledger_index}:${Sequence}:${OracleDocumentID}`)
 				}
 				const result = await this.sign(OracleSet)
 				
@@ -488,6 +496,21 @@ class backend  extends EventEmitter {
 				}
 
 			},
+			service() {
+				const self = this
+				app.get('/*', async function(req, res) {
+					res.setHeader('Access-Control-Allow-Origin', '*')
+                    log('Called: ' + req.route.path, req.query)
+					log(req.params)
+					if (req.params.length === 0) { return res.json({ 'error' : 'invalid parameters'}) }
+					if (req.params[0].split(':').length !== 4) { return res.json({ 'error' : 'invalid parameters'}) }
+
+					log('attestation fetch', req.params[0])
+					const data = await myDB.get(req.params[0])
+					if (data === undefined) { return res.json({ 'error' : 'invalid parameters'}) }
+					res.json(data)
+                })
+			}
 		})
 	}
 }
@@ -495,4 +518,4 @@ class backend  extends EventEmitter {
 const main = new backend()
 main.run()
 
-
+main.service()
