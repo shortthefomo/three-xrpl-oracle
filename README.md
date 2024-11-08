@@ -8,7 +8,9 @@ pushes oracle data into the XRPL. via the address roosteri9aGNFRXZrJNYQKVBfxHiE5
 - `yarn` or `npm install`
 - `./run.sh` and it will launch a pm2 process with the daemon
 
-## accessing 
+## accessing on ledger data
+
+follow the guist https://gist.github.com/shortthefomo/4f47d90200f87dc503e3f3f04494b918
 
 ## access Attestations via API and Payment Channels
 First 20 resuests are free, 5 drops there after are claimed perrequest via the payment channel that you need to setup with dhali.io log into their interface and setup the payment channel.
