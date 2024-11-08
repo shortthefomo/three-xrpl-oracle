@@ -504,14 +504,14 @@ class backend  extends EventEmitter {
                     log('Called: ' + req.route.path, req.query)
 					log('params', req.params)
 					log('headers', req.headers)
-					if (req.headers.rooster === undefined) { return res.json({ 'error' : 'invalid parameters'}) }
-					if (req.headers.rooster !== 'cock a doodle doo') { return res.json({ 'error' : 'invalid parameters'}) }
+					if (req.headers.rooster === undefined) { return res.json({ 'error' : 'invalid parameters 1'}) }
+					if (req.headers.rooster !== 'cock a doodle doo') { return res.json({ 'error' : 'invalid parameters 2'}) }
 
-					if (req.headers.attestation === undefined) { return res.json({ 'error' : 'invalid parameters'}) }
-					if (req.headers.attestation.split(':').length !== 4) { return res.json({ 'error' : 'invalid parameters'}) }
+					if (req.headers.attestation === undefined) { return res.json({ 'error' : 'invalid parameters 3'}) }
+					if (req.headers.attestation.split(':').length !== 4) { return res.json({ 'error' : 'invalid parameters 4'}) }
 
-					log('attestation fetch', req.params[0])
-					const data = await myDB.get(req.params[0])
+					log('attestation fetch', req.headers.attestation)
+					const data = await myDB.get(req.headers.attestation)
 					if (data === undefined) { return res.json({ 'error' : 'invalid parameters'}) }
 					res.json(req.headers)
                 })
