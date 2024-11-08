@@ -512,7 +512,7 @@ class backend  extends EventEmitter {
 
 					log('attestation fetch', req.headers.attestation)
 					const data = await myDB.get(req.headers.attestation)
-					if (data === undefined) { return res.json({ 'error' : 'invalid parameters'}) }
+					if (data === undefined) { return res.json({ 'error' : 'invalid attestation id'}) }
 					res.json(req.headers)
                 })
 
