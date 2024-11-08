@@ -1,6 +1,6 @@
 # THREE XRPL ORACLE PUBLISHER
 
-pushes oracle data into the XRPL.
+pushes oracle data into the XRPL. via the address roosteri9aGNFRXZrJNYQKVBfxHiE5abg
 
 ## install
 - install pm2 on machine if not there
