@@ -103,7 +103,7 @@ class backend  extends EventEmitter {
 				const command = {
 					'command': 'get_aggregate_price',
 					'ledger_index': 'current',
-					'base_asset': 'XRP',
+					'base_asset': 'ATM',
 					'quote_asset': this.currencyUTF8ToHex(asset),
 					'trim': 20,
 					'oracles': [
@@ -158,8 +158,9 @@ class backend  extends EventEmitter {
 				socket.onmessage = function (message) {
 					connected = true
 					const rawData = JSON.parse(message.data)
-					if ('oracle' in rawData) {
-						Object.entries(rawData.oracle).forEach(([key, value]) => {
+					if ('oracle-ATM' in rawData) {
+						if (rawData['oracle-ATM'] === undefined) { return }
+						Object.entries(rawData['oracle-ATM']).forEach(([key, value]) => {
 							if (key !== 'STATS') {
 								if (value.Token !== undefined) {
 									if (key.length > 3) {
@@ -238,7 +239,7 @@ class backend  extends EventEmitter {
 					const scale = this.countDecimals(value.Price)
 					const data = {
 						'PriceData': {
-							'BaseAsset': 'XRP',
+							'BaseAsset': 'ATM',
 							'QuoteAsset': this.currencyUTF8ToHex(QuoteAsset),
 							'AssetPrice': Math.round(value.Price * Math.pow(10, scale)),
 							'Timestamp': value.Timestamp
@@ -269,7 +270,7 @@ class backend  extends EventEmitter {
 					const scale = this.countDecimals(value.Price)
 					const data = {
 						'PriceData': {
-							'BaseAsset': 'XRP',
+							'BaseAsset': 'ATM',
 							'QuoteAsset': this.currencyUTF8ToHex(QuoteAsset),
 							'AssetPrice': Math.round(value.Price * Math.pow(10, scale)),
 							'Timestamp': value.Timestamp
@@ -300,7 +301,7 @@ class backend  extends EventEmitter {
 					const scale = this.countDecimals(value.Price)
 					const data = {
 						'PriceData': {
-							'BaseAsset': 'XRP',
+							'BaseAsset': 'ATM',
 							'QuoteAsset': this.currencyUTF8ToHex(QuoteAsset),
 							'AssetPrice': Math.round(value.Price * Math.pow(10, scale)),
 							'Timestamp': value.Timestamp
@@ -313,7 +314,7 @@ class backend  extends EventEmitter {
 				})
 				for (let i = 0; i < CurrencyDataSeries.length; i += ChunkSize) {
 					const chunk = CurrencyDataSeries.slice(i, i + ChunkSize)
-					const result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'currency')
+					let result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'currency')
 					if (result === 'tecARRAY_TOO_LARGE' || result === 'temMALFORMED') {
 						Sequence = await this.deleteDocumentInstance(OracleDocumentID, Fee)
 					}
