@@ -313,7 +313,7 @@ class backend  extends EventEmitter {
 				})
 				for (let i = 0; i < CurrencyDataSeries.length; i += ChunkSize) {
 					const chunk = CurrencyDataSeries.slice(i, i + ChunkSize)
-					const result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'currency')
+					let result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'currency')
 					if (result === 'tecARRAY_TOO_LARGE' || result === 'temMALFORMED') {
 						Sequence = await this.deleteDocumentInstance(OracleDocumentID, Fee)
 					}
