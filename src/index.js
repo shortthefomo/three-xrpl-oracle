@@ -9,6 +9,7 @@ const { open } = require('lmdb')
 const app = require('express')()
 const http = require('http')
 const fs = require( 'fs')
+const decimal = require('decimal.js')
 const dotenv = require('dotenv')
 const debug = require('debug')
 const log = debug('main:backend')
@@ -235,17 +236,18 @@ class backend  extends EventEmitter {
 				const StableDataSeries = []
 				Object.entries(stable).sort().forEach(([QuoteAsset, value]) => {
 					// log(value)
-					const scale = this.countDecimals(value.Price)
+					const price = new decimal(value.Price).toFixed(10) * 1
+					const scale = this.countDecimals(price)
 					const data = {
 						'PriceData': {
 							'BaseAsset': 'XRP',
 							'QuoteAsset': this.currencyUTF8ToHex(QuoteAsset),
-							'AssetPrice': Math.round(value.Price * Math.pow(10, scale)),
+							'AssetPrice': Math.round(price * Math.pow(10, scale)),
 							'Timestamp': value.Timestamp
 						}
 					}
 					if (scale > 0) {
-						data.PriceData.Scale = this.countDecimals(value.Price)
+						data.PriceData.Scale = this.countDecimals(price)
 					}
 					StableDataSeries.push(data)
 				})
@@ -265,18 +267,19 @@ class backend  extends EventEmitter {
 
 				const CryptoDataSeries = []
 				Object.entries(crypto).sort().forEach(([QuoteAsset, value]) => {
-					// log(value)
-					const scale = this.countDecimals(value.Price)
+					// log(value)4
+					const price = new decimal(value.Price).toFixed(10) * 1
+					const scale = this.countDecimals(price)
 					const data = {
 						'PriceData': {
 							'BaseAsset': 'XRP',
 							'QuoteAsset': this.currencyUTF8ToHex(QuoteAsset),
-							'AssetPrice': Math.round(value.Price * Math.pow(10, scale)),
+							'AssetPrice': Math.round(price * Math.pow(10, scale)),
 							'Timestamp': value.Timestamp
 						}
 					}
 					if (scale > 0) {
-						data.PriceData.Scale = this.countDecimals(value.Price)
+						data.PriceData.Scale = this.countDecimals(price)
 					}
 					CryptoDataSeries.push(data)
 				})
@@ -297,17 +300,18 @@ class backend  extends EventEmitter {
 				const CurrencyDataSeries = []
 				Object.entries(currency).sort().forEach(([QuoteAsset, value]) => {
 					// log(value)
-					const scale = this.countDecimals(value.Price)
+					const price = new decimal(value.Price).toFixed(10) * 1
+					const scale = this.countDecimals(price)
 					const data = {
 						'PriceData': {
 							'BaseAsset': 'XRP',
 							'QuoteAsset': this.currencyUTF8ToHex(QuoteAsset),
-							'AssetPrice': Math.round(value.Price * Math.pow(10, scale)),
+							'AssetPrice': Math.round(price * Math.pow(10, scale)),
 							'Timestamp': value.Timestamp
 						}
 					}
 					if (scale > 0) {
-						data.PriceData.Scale = this.countDecimals(value.Price)
+						data.PriceData.Scale = this.countDecimals(price)
 					}
 					CurrencyDataSeries.push(data)
 				})
