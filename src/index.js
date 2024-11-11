@@ -553,13 +553,6 @@ class backend  extends EventEmitter {
 					// 	}
 					// }
 
-					return res.json({ 
-						'warning' : 'flood control',
-						'documentation': 'https://app.dhali.io/#/assets/d74e99cb-166d-416b-b171-4d313e0f079d',
-						'payment channel example': 'curl -H "Payment-Claim: $PAYMENT_CLAIM" -H "attestation:currency:91963150:91586706:3" \https://run.api.dhali.io/d74e99cb-166d-416b-b171-4d313e0f079d/',
-
-					})
-
 					if (req.params.length === 0) { return res.json({ 'error' : 'invalid parameters'}) }
 					if (req.params[0].split(':').length !== 4) { return res.json({ 'error' : 'invalid parameters'}) }
 
