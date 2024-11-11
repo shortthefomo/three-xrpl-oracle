@@ -1,6 +1,6 @@
 # THREE XRPL ORACLE PUBLISHER
 
-pushes oracle data into the XRPL.
+pushes oracle data into the XRPL. via the address roosteri9aGNFRXZrJNYQKVBfxHiE5abg
 
 ## install
 - install pm2 on machine if not there
@@ -8,8 +8,13 @@ pushes oracle data into the XRPL.
 - `yarn` or `npm install`
 - `./run.sh` and it will launch a pm2 process with the daemon
 
+## accessing on ledger data
 
-## access API via payment channel
+follow the gist https://gist.github.com/shortthefomo/4f47d90200f87dc503e3f3f04494b918
+
+## access Attestations via API and Payment Channels
+First 20 resuests are free, 5 drops there after are claimed perrequest via the payment channel that you need to setup with dhali.io log into their interface and setup the payment channel.
+
 
 A small example.
 Get the attestation parameters from the OracleSet transaction, where "currency:91963150:91586706:3" is the slugs in the URI like this one https://livenet.xrpl.org/transactions/1C278595C8965AE5DA7848550FC56D898B19D2CA7EBFC36C8EED23887FB383D3
