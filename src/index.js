@@ -61,6 +61,12 @@ class backend  extends EventEmitter {
 				this.eventListeners()
 				await this.pause(5000)
 
+				await xrpl.send({
+					id: 'three-oracle-index',
+					command: 'subscribe',
+					streams: ['ledger']
+				})
+
 				const self = this
 				const callback = async (event) => {
 					log('ledger close', 'mode:' + mode)
