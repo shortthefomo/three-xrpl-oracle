@@ -69,8 +69,8 @@ class backend  extends EventEmitter {
 
 				const self = this
 				const callback = async (event) => {
-					log('ledger close', 'mode:' + mode)
 					ledger_index = event.ledger_index
+					log('ledger close', 'mode:' + mode, ledger_index)
 					if (mode === 'every') {
 						self.emit('chunk-submit')
 					}
@@ -534,7 +534,7 @@ class backend  extends EventEmitter {
 					log('headers', req.headers)
 					if (req.headers.host !== undefined) {
 						// reset after one day
-						if (ledger_index - requests[req.headers.host].ledger_index >= 3605) {
+						if (requests[req.headers.host] !== undefined && (ledger_index - requests[req.headers.host].ledger_index >= 20000)) {
 							delete requests[req.headers.host]
 						}
 
