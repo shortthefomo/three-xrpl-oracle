@@ -104,7 +104,7 @@ class backend  extends EventEmitter {
 				const command = {
 					'command': 'get_aggregate_price',
 					'ledger_index': 'current',
-					'base_asset': 'ATM',
+					'base_asset': 'XAH',
 					'quote_asset': this.currencyUTF8ToHex(asset),
 					'trim': 20,
 					'oracles': [
@@ -159,9 +159,9 @@ class backend  extends EventEmitter {
 				socket.onmessage = function (message) {
 					connected = true
 					const rawData = JSON.parse(message.data)
-					if ('oracle-ATM' in rawData) {
-						if (rawData['oracle-ATM'] === undefined) { return }
-						Object.entries(rawData['oracle-ATM']).forEach(([key, value]) => {
+					if ('oracle-XAH' in rawData) {
+						if (rawData['oracle-XAH'] === undefined) { return }
+						Object.entries(rawData['oracle-XAH']).forEach(([key, value]) => {
 							if (key !== 'STATS') {
 								if (value.Token !== undefined) {
 									if (key.length > 3) {
@@ -240,7 +240,7 @@ class backend  extends EventEmitter {
 					const scale = this.countDecimals(price)
 					const data = {
 						'PriceData': {
-							'BaseAsset': 'ATM',
+							'BaseAsset': 'XAH',
 							'QuoteAsset': this.currencyUTF8ToHex(QuoteAsset),
 							'AssetPrice': Math.round(price * Math.pow(10, scale)),
 							'Timestamp': value.Timestamp
@@ -272,7 +272,7 @@ class backend  extends EventEmitter {
 					const scale = this.countDecimals(price)
 					const data = {
 						'PriceData': {
-							'BaseAsset': 'ATM',
+							'BaseAsset': 'XAH',
 							'QuoteAsset': this.currencyUTF8ToHex(QuoteAsset),
 							'AssetPrice': Math.round(price * Math.pow(10, scale)),
 							'Timestamp': value.Timestamp
@@ -304,7 +304,7 @@ class backend  extends EventEmitter {
 					const scale = this.countDecimals(price)
 					const data = {
 						'PriceData': {
-							'BaseAsset': 'ATM',
+							'BaseAsset': 'XAH',
 							'QuoteAsset': this.currencyUTF8ToHex(QuoteAsset),
 							'AssetPrice': Math.round(price * Math.pow(10, scale)),
 							'Timestamp': value.Timestamp
