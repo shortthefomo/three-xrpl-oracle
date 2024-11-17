@@ -104,7 +104,7 @@ class backend  extends EventEmitter {
 				const command = {
 					'command': 'get_aggregate_price',
 					'ledger_index': 'current',
-					'base_asset': 'XAH',
+					'base_asset': 'EVR',
 					'quote_asset': this.currencyUTF8ToHex(asset),
 					'trim': 20,
 					'oracles': [
@@ -159,9 +159,9 @@ class backend  extends EventEmitter {
 				socket.onmessage = function (message) {
 					connected = true
 					const rawData = JSON.parse(message.data)
-					if ('oracle-XAH' in rawData) {
-						if (rawData['oracle-XAH'] === undefined) { return }
-						Object.entries(rawData['oracle-XAH']).forEach(([key, value]) => {
+					if ('oracle-EVR' in rawData) {
+						if (rawData['oracle-EVR'] === undefined) { return }
+						Object.entries(rawData['oracle-EVR']).forEach(([key, value]) => {
 							if (key !== 'STATS') {
 								if (value.Token !== undefined) {
 									if (key.length > 3) {
@@ -240,7 +240,7 @@ class backend  extends EventEmitter {
 					const scale = this.countDecimals(price)
 					const data = {
 						'PriceData': {
-							'BaseAsset': 'XAH',
+							'BaseAsset': 'EVR',
 							'QuoteAsset': this.currencyUTF8ToHex(QuoteAsset),
 							'AssetPrice': Math.round(price * Math.pow(10, scale)),
 							'Timestamp': value.Timestamp
@@ -272,7 +272,7 @@ class backend  extends EventEmitter {
 					const scale = this.countDecimals(price)
 					const data = {
 						'PriceData': {
-							'BaseAsset': 'XAH',
+							'BaseAsset': 'EVR',
 							'QuoteAsset': this.currencyUTF8ToHex(QuoteAsset),
 							'AssetPrice': Math.round(price * Math.pow(10, scale)),
 							'Timestamp': value.Timestamp
@@ -304,7 +304,7 @@ class backend  extends EventEmitter {
 					const scale = this.countDecimals(price)
 					const data = {
 						'PriceData': {
-							'BaseAsset': 'XAH',
+							'BaseAsset': 'EVR',
 							'QuoteAsset': this.currencyUTF8ToHex(QuoteAsset),
 							'AssetPrice': Math.round(price * Math.pow(10, scale)),
 							'Timestamp': value.Timestamp
