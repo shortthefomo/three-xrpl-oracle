@@ -180,7 +180,7 @@ class backend  extends EventEmitter {
 					// log(data)
 				}
 				socket.onerror = function (error) {
-					log('error', error)
+					log('socket error', error)
 				}
 				socket.onclose = function (event) {
 					connected = false
@@ -493,7 +493,7 @@ class backend  extends EventEmitter {
 				const result = await xrpl.send(books)
 				if ('error' in result) {
 					ledger_errors++
-					log('error', result.error)
+					log('error checking connection', result.error)
 				}
 				if (ledger_errors > 2) {
 					xrpl.reinstate({forceNextUplink: true})
