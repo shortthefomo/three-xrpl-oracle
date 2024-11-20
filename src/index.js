@@ -67,26 +67,26 @@ class backend  extends EventEmitter {
 					streams: ['ledger']
 				})
 
-				const self = this
 				const callback = async (event) => {
 					ledger_index = event.ledger_index
 					log('ledger close', 'mode:' + mode, ledger_index)
 					if (mode === 'every') {
-						self.emit('chunk-submit')
+						this.emit('chunk-submit')
 					}
 					this.accountBalance() // dont wait!!
 				}
 				xrpl.on('ledger', callback)
 
+				const self = this
 				setInterval(async () => {
 					if (mode === '1min') {
 						self.emit('chunk-submit-pause')
 					}
-					self.emit('aggregate-price')
+					// self.emit('aggregate-price')
 				}, 60_000)
-				setInterval(() => {
-					self.emit('check-connection')
-				}, 10_000)
+				// setInterval(() => {
+				// 	self.emit('check-connection')
+				// }, 10_000)
 			},
 			eventListeners() {
 				this.addListener('chunk-submit', async () => {
@@ -509,6 +509,14 @@ class backend  extends EventEmitter {
 			},
 			service() {
 				const self = this
+				app.get('/raw-data', async function(req, res) {
+					res.json({
+						'stable-token': stable,
+						'crypto-token': crypto,
+						'currency': currency
+					})
+				})
+
 				app.get('/paychannel', async function(req, res) {
 					log('PAY-CHANNEL')
 					res.setHeader('Access-Control-Allow-Origin', '*')

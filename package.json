@@ -5,6 +5,7 @@
   "main": "src/index.js",
   "scripts": {
     "dev": "DEBUG=main* nodemon src/index.js",
+    "dev2": "DEBUG=main* nodemon src/index2.js",
     "prod": "DEBUG=main* node src/index.js"
   },
   "author": "Lathan Britz",
