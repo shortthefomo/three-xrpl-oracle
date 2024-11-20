@@ -259,7 +259,7 @@ class backend  extends EventEmitter {
 				})
 				for (let i = 0; i < StableDataSeries.length; i += ChunkSize) {
 					const chunk = StableDataSeries.slice(i, i + ChunkSize)
-					let result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'stable-token')
+					let result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'stable token')
 					if (result === 'tecARRAY_TOO_LARGE' || result === 'temMALFORMED') {
 						Sequence = await this.deleteDocumentInstance(OracleDocumentID, Fee)
 					}
