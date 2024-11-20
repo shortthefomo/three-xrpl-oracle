@@ -510,6 +510,14 @@ class backend  extends EventEmitter {
 			service() {
 				const self = this
 				app.get('/raw-data', async function(req, res) {
+					res.setHeader('Access-Control-Allow-Origin', '*')
+					log('Called: ' + req.route.path, req.query)
+					log('params', req.params)
+					log('headers', req.headers)
+					if (req.headers.rooster === undefined) { return res.json({ 'error' : 'invalid parameters'}) }
+					if (req.headers.rooster !== 'cock a doodle doo') { return res.json({ 'error' : 'invalid parameters'}) }
+					log('raw data fetch')
+
 					res.json({
 						'stable-token': stable,
 						'crypto-token': crypto,
@@ -517,54 +525,11 @@ class backend  extends EventEmitter {
 					})
 				})
 
-				app.get('/paychannel', async function(req, res) {
-					log('PAY-CHANNEL')
-					res.setHeader('Access-Control-Allow-Origin', '*')
-                    log('Called: ' + req.route.path, req.query)
-					log('params', req.params)
-					log('headers', req.headers)
-					if (req.headers.rooster === undefined) { return res.json({ 'error' : 'invalid parameters'}) }
-					if (req.headers.rooster !== 'cock a doodle doo') { return res.json({ 'error' : 'invalid parameters'}) }
-
-					if (req.headers.attestation === undefined) { return res.json({ 'error' : 'invalid parameters'}) }
-					if (req.headers.attestation.split(':').length !== 4) { return res.json({ 'error' : 'invalid parameters'}) }
-
-					log('attestation fetch', req.headers.attestation)
-					const data = await myDB.get(req.headers.attestation)
-					if (data === undefined) { return res.json({ 'error' : 'invalid attestation id'}) }
-					res.json(data)
-                })
-
 				app.get('/*', async function(req, res) {
 					res.setHeader('Access-Control-Allow-Origin', '*')
                     log('Called: ' + req.route.path, req.query)
 					log('params', req.params)
 					log('headers', req.headers)
-					if (req.headers.host !== undefined) {
-						// reset after one day
-						if (requests[req.headers.host] !== undefined && (ledger_index - requests[req.headers.host].ledger_index >= 20000)) {
-							delete requests[req.headers.host]
-						}
-
-						if (requests[req.headers.host] === undefined) {
-							requests[req.headers.host] = {
-								requests: 0,
-								ledger_index
-							}
-						}
-						else {
-							requests[req.headers.host].requests = requests[req.headers.host].requests + 1
-							requests[req.headers.host].ledger_index = ledger_index
-						}
-						if (requests[req.headers.host].requests > 20) {
-							return res.json({ 
-								'warning' : 'flood control',
-								'documentation': 'https://app.dhali.io/#/assets/d74e99cb-166d-416b-b171-4d313e0f079d',
-								'payment channel example': 'curl -H "Payment-Claim: $PAYMENT_CLAIM" -H "attestation:currency:91963150:91586706:3" \https://run.api.dhali.io/d74e99cb-166d-416b-b171-4d313e0f079d/',
-
-							})
-						}
-					}
 
 					if (req.params.length === 0) { return res.json({ 'error' : 'invalid parameters'}) }
 					if (req.params[0].split(':').length !== 4) { return res.json({ 'error' : 'invalid parameters'}) }
