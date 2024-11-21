@@ -528,8 +528,8 @@ class backend  extends EventEmitter {
 				app.get('/*', async function(req, res) {
 					res.setHeader('Access-Control-Allow-Origin', '*')
                     log('Called: ' + req.route.path, req.query)
-					log('params', req.params)
-					log('headers', req.headers)
+					// log('params', req.params)
+					// log('headers', req.headers)
 
 					if (req.params.length === 0) { return res.json({ 'error' : 'invalid parameters'}) }
 					if (req.params[0].split(':').length !== 4) { return res.json({ 'error' : 'invalid parameters'}) }
