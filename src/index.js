@@ -272,38 +272,6 @@ class backend  extends EventEmitter {
 					OracleDocumentID++
 				}
 
-				const CryptoDataSeries = []
-				Object.entries(crypto).sort().forEach(([QuoteAsset, value]) => {
-					// log(value)4
-					const price = new decimal(value.Price).toFixed(10) * 1
-					const scale = this.countDecimals(price)
-					const data = {
-						'PriceData': {
-							'BaseAsset': 'XRP',
-							'QuoteAsset': this.currencyUTF8ToHex(QuoteAsset),
-							'AssetPrice': Math.round(price * Math.pow(10, scale)),
-							'Timestamp': value.Timestamp
-						}
-					}
-					if (scale > 0) {
-						data.PriceData.Scale = this.countDecimals(price)
-					}
-					CryptoDataSeries.push(data)
-				})
-				for (let i = 0; i < CryptoDataSeries.length; i += ChunkSize) {
-					const chunk = CryptoDataSeries.slice(i, i + ChunkSize)
-					const result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'crypto token')
-					if (result === 'tecARRAY_TOO_LARGE' || result === 'temMALFORMED') {
-						Sequence = await this.deleteDocumentInstance(OracleDocumentID, Fee)
-					}
-					if (result === 'tefPAST_SEQ') {
-						Sequence = await this.getSequence()
-						result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'crypto token')
-					}
-					Sequence++
-					OracleDocumentID++
-				}
-
 				const CurrencyDataSeries = []
 				Object.entries(currency).sort().forEach(([QuoteAsset, value]) => {
 					// log(value)
@@ -331,6 +299,38 @@ class backend  extends EventEmitter {
 					if (result === 'tefPAST_SEQ') {
 						Sequence = await this.getSequence()
 						result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'currency')
+					}
+					Sequence++
+					OracleDocumentID++
+				}
+
+				const CryptoDataSeries = []
+				Object.entries(crypto).sort().forEach(([QuoteAsset, value]) => {
+					// log(value)4
+					const price = new decimal(value.Price).toFixed(10) * 1
+					const scale = this.countDecimals(price)
+					const data = {
+						'PriceData': {
+							'BaseAsset': 'XRP',
+							'QuoteAsset': this.currencyUTF8ToHex(QuoteAsset),
+							'AssetPrice': Math.round(price * Math.pow(10, scale)),
+							'Timestamp': value.Timestamp
+						}
+					}
+					if (scale > 0) {
+						data.PriceData.Scale = this.countDecimals(price)
+					}
+					CryptoDataSeries.push(data)
+				})
+				for (let i = 0; i < CryptoDataSeries.length; i += ChunkSize) {
+					const chunk = CryptoDataSeries.slice(i, i + ChunkSize)
+					const result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'crypto token')
+					if (result === 'tecARRAY_TOO_LARGE' || result === 'temMALFORMED') {
+						Sequence = await this.deleteDocumentInstance(OracleDocumentID, Fee)
+					}
+					if (result === 'tefPAST_SEQ') {
+						Sequence = await this.getSequence()
+						result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'crypto token')
 					}
 					Sequence++
 					OracleDocumentID++
