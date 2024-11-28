@@ -161,6 +161,7 @@ class backend  extends EventEmitter {
 			},
 			connectWebsocket() {
 				const self = this
+				const tokens = ['BTC', 'ETH', 'BNB', 'AAVE', 'ADA', 'ALGO', 'AVAX', 'BAT', 'CAKE', 'CSC', 'DOGE', 'DOT', 'ENJ', 'ENS', 'EOS', 'ETC', 'FLR', 'GALA', 'HBAR', 'ICP', 'KAVA', 'LINK', 'LTC', 'PEPE', 'QNT', 'RNV', 'SHIB', 'SOL', 'TRX', 'UNI', 'VET', 'WIF', 'XAH', 'XDC', 'XLM', 'ZRX']
 				socket = new WebSocket(process.env.ORACLE_DATA)
 				socket.onmessage = function (message) {
 					connected = true
@@ -169,11 +170,11 @@ class backend  extends EventEmitter {
 						Object.entries(rawData.oracle).forEach(([key, value]) => {
 							if (key !== 'STATS') {
 								if (value.Token !== undefined) {
-									if (key.length > 3) {
-										stable[key] = value
-									}
-									if (key === 'BTC' || key === 'ETH' || key === 'BNB') {
+									if (tokens.includes(key)) {
 										crypto[key] = value
+									}
+									else if (key.length > 3) {
+										stable[key] = value
 									}
 									else if (key.length === 3) {
 										currency[key] = value
