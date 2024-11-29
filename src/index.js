@@ -24,7 +24,7 @@ dotenv.config()
 
 log('using http: for webhead: ' + (process.env.APP_PORT))
 
-let httpServer = http.createServer(app).listen(process.env.APP_PORT)
+
 
 // header rooster:'cock a doodle doo'
 class backend  extends EventEmitter {
@@ -32,20 +32,20 @@ class backend  extends EventEmitter {
 		super()
 		dotenv.config()
 
-		let myDB = open({
+		http.createServer(app).listen(process.env.APP_PORT)
+		const myDB = open({
 			path: 'db/attestation-db',
 			compression: false,
 		})
+		
 		const xrpl = new XrplClient((process.env.XRPL_CLIENT === 'wss://s.devnet.rippletest.net:51233') ? [process.env.XRPL_CLIENT] : [process.env.XRPL_CLIENT, 'wss://xrplcluster.com', 'wss://xrpl.link', 'wss://s2.ripple.com'])
 		const currency = {}
 		const stable = {}
 		const crypto = {}
-		let ledger_errors = 0
 		let ledger_index
 		let definitions, socket
 		let connected = false
-		let mode = 'every' // every/1min/5min
-		let requests = {}
+		let mode = '1min' // every/1min/5min
 
 		Object.assign(this, {
 			async run() {
@@ -84,9 +84,6 @@ class backend  extends EventEmitter {
 					}
 					// self.emit('aggregate-price')
 				}, 60_000)
-				// setInterval(() => {
-				// 	self.emit('check-connection')
-				// }, 10_000)
 			},
 			eventListeners() {
 				this.addListener('chunk-submit', async () => {
@@ -94,15 +91,12 @@ class backend  extends EventEmitter {
 				})
 				this.addListener('chunk-submit-pause', async () => {
 					await this.chunckSubmit(false)
+					this.logAppStats()
 				})
 				this.addListener('aggregate-price', async () => {
 					await this.getAggregatePrice()
 				})
-				this.addListener('check-connection', async () => {
-					this.checkConnection()
-				})
 				this.addListener('reconnect-websocket', async () => {
-					await this.pause(10_000)
 					this.connectWebsocket()
 				})
 			},
@@ -187,13 +181,16 @@ class backend  extends EventEmitter {
 				}
 				socket.onerror = function (error) {
 					log('error', error)
+					setTimeout(() => {
+						self.emit('reconnect-websocket')
+					}, 15_000)
 				}
 				socket.onclose = function (event) {
 					connected = false
 					log('socket close')
 					setTimeout(() => {
 						self.emit('reconnect-websocket')
-					}, 5_000)
+					}, 15_000)
 				}
 			},
 			async pause(milliseconds = 1000) {
@@ -485,28 +482,15 @@ class backend  extends EventEmitter {
 				console.log('OracleDelete', result.engine_result)
 				return Sequence
 			},
-			async checkConnection() {
-				log('checking connection')
-				const books = {
-					'id': 4,
-					'command': 'book_offers',
-					'taker': 'rrrrrrrrrrrrrrrrrrrrBZbvji',
-					'taker_gets': {'currency': 'USD', 'issuer': 'rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B' },
-					'taker_pays': {'currency': 'XRP' },
-					'limit': 100
-				}
+			logAppStats() {
+				const usage = process.memoryUsage()
+				usage.rss = usage.rss / Math.pow(1000, 2)
+				usage.heapTotal = usage.heapTotal / Math.pow(1000, 2)
+				usage.heapUsed = usage.heapUsed / Math.pow(1000, 2)
+				usage.external = usage.external / Math.pow(1000, 2)
+				usage.arrayBuffers = usage.arrayBuffers / Math.pow(1000, 2)
 
-				const result = await xrpl.send(books)
-				if ('error' in result) {
-					ledger_errors++
-					log('error', result.error)
-				}
-				if (ledger_errors > 2) {
-					xrpl.reinstate({forceNextUplink: true})
-					log('reinstate client', await xrpl.send({ command: 'server_info' }))
-					ledger_errors = 0
-				}
-
+				log(`rss: ${usage.rss} MB, total: ${usage.heapTotal} MB, used: ${usage.heapUsed} MB, external: ${usage.external} MB, arrayBuffers: ${usage.arrayBuffers} MB`)
 			},
 			service() {
 				const self = this
