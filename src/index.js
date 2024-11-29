@@ -46,6 +46,7 @@ class backend  extends EventEmitter {
 		let definitions, socket
 		let connected = false
 		let mode = '1min' // every/1min/5min
+		let timeoutpause
 
 		Object.assign(this, {
 			async run() {
@@ -60,6 +61,7 @@ class backend  extends EventEmitter {
 				this.connectWebsocket()
 				this.eventListeners()
 				await this.pause(5000)
+				clearTimeout(timeoutpause)
 
 				await xrpl.send({
 					id: 'three-oracle-index',
@@ -196,7 +198,7 @@ class backend  extends EventEmitter {
 			async pause(milliseconds = 1000) {
 				return new Promise(resolve => {
 					console.log('pausing....')
-					setTimeout(resolve, milliseconds)
+					timeoutpause = setTimeout(resolve, milliseconds)
 				})
 			},
 			async getSequence() {
@@ -221,9 +223,10 @@ class backend  extends EventEmitter {
 				}
 				if (Pause) {
 					await this.pause(1200)
+					clearTimeout(timeoutpause)
 				}
 
-				
+
 				let Sequence = await this.getSequence()
 				if (Sequence === undefined) { return }
 
@@ -531,5 +534,4 @@ class backend  extends EventEmitter {
 
 const main = new backend()
 main.run()
-
 main.service()
