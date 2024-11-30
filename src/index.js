@@ -336,7 +336,7 @@ class backend  extends EventEmitter {
 
 				if (Object.entries(currency).length === 0 && 
 					Object.entries(stable).length === 0 && 
-					Object.entries(crypto).length === 0 &&) {
+					Object.entries(crypto).length === 0) {
 					// no data something is fucked.....
 					this.emit('reconnect-websocket')
 				}
