@@ -184,6 +184,7 @@ class backend  extends EventEmitter {
 					// log(rawData)
 				}
 				socket.onerror = function (error) {
+					connected = false
 					log('error', error)
 					self.emit('reconnect-websocket')
 				}
@@ -217,7 +218,7 @@ class backend  extends EventEmitter {
 				const ChunkSize = 10
 				if (!connected) {
 					log('oracle websocket disconnected')
-					return
+					// return
 				}
 				if (Pause) {
 					await this.pause(1200)
