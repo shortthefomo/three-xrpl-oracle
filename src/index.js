@@ -99,7 +99,9 @@ class backend  extends EventEmitter {
 					await this.getAggregatePrice()
 				})
 				this.addListener('reconnect-websocket', async () => {
+					this.pause(15_000)
 					this.connectWebsocket()
+					log('Reconnecting websocket....')
 				})
 			},
 			async getAggregatePrice(asset = 'USD') {
@@ -179,20 +181,16 @@ class backend  extends EventEmitter {
 							}
 						})
 					}
-					// log(data)
+					// log(rawData)
 				}
 				socket.onerror = function (error) {
 					log('error', error)
-					setTimeout(() => {
-						self.emit('reconnect-websocket')
-					}, 15_000)
+					self.emit('reconnect-websocket')
 				}
 				socket.onclose = function (event) {
 					connected = false
 					log('socket close')
-					setTimeout(() => {
-						self.emit('reconnect-websocket')
-					}, 15_000)
+					self.emit('reconnect-websocket')
 				}
 			},
 			async pause(milliseconds = 1000) {
@@ -334,6 +332,13 @@ class backend  extends EventEmitter {
 					}
 					Sequence++
 					OracleDocumentID++
+				}
+
+				if (Object.entries(currency).length === 0 && 
+					Object.entries(stable).length === 0 && 
+					Object.entries(crypto).length === 0 &&) {
+					// no data something is fucked.....
+					this.emit('reconnect-websocket')
 				}
 			},
 			async submit(PriceDataSeries, Sequence, Fee, OracleDocumentID, AssetClass = 'currency') {
