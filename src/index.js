@@ -99,7 +99,7 @@ class backend  extends EventEmitter {
 					await this.getAggregatePrice()
 				})
 				this.addListener('reconnect-websocket', async () => {
-					this.pause(15_000)
+					await this.pause(5_000)
 					this.connectWebsocket()
 					log('Reconnecting websocket....')
 				})
