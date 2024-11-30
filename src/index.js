@@ -226,6 +226,7 @@ class backend  extends EventEmitter {
 
 
 				let Sequence = await this.getSequence()
+				let SequenceStart = Sequence
 				if (Sequence === undefined) { return }
 
 				const server_info = await xrpl.send({ 'command': 'server_info' })
@@ -337,7 +338,11 @@ class backend  extends EventEmitter {
 				if (Object.entries(currency).length === 0 && 
 					Object.entries(stable).length === 0 && 
 					Object.entries(crypto).length === 0) {
-					// no data something is fucked.....
+					log('no data something is fucked.....')
+					this.emit('reconnect-websocket')
+				}
+				else if (SequenceStart === Sequence) {
+					log('nothing submitted to ledger wtf...')
 					this.emit('reconnect-websocket')
 				}
 			},
