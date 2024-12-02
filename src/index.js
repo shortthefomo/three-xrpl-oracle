@@ -234,30 +234,9 @@ class backend  extends EventEmitter {
 					// https://github.com/ripple/rippled/issues/3812#issuecomment-816871100
 					server_info.load_factor = 1
 				}
-				const NUM_DECIMAL_PLACES = 6
-				const BASE_10 = 10
-				const feeCushion = 1.2
-				const maxFeeXRP = 0.1
-
-				const baseFee = server_info.info.validated_ledger?.base_fee_xrp
-
-				if (baseFee == null) {
-					log('error no base fee', server_info.info)
-					return
-				}
-				const baseFeeXrp = new BigNumber(baseFee)
-
-				if (server_info.load_factor == null) {
-					// https://github.com/ripple/rippled/issues/3812#issuecomment-816871100
-					server_info.load_factor = 1
-				}
-				let feeCalc = baseFeeXrp.times(server_info.load_factor).times(feeCushion)
-				// Cap fee to `maxFeeXRP`
-				feeCalc = BigNumber.min(feeCalc, maxFeeXRP)
-  				// Round fee to 6 decimal places
-  				const Fee = new BigNumber(feeCalc.toFixed(NUM_DECIMAL_PLACES)).toString(BASE_10)
-
-				log('Feee', Fee)
+				const FEE_CUSHION = 1.2
+				const Fee = new decimal(server_info.info.validated_ledger.base_fee_xrp).mul(server_info.load_factor).mul(FEE_CUSHION).mul(1_000_000).toFixed(0)
+				log('Feee', FEE_CUSHION, server_info.load_factor, server_info.info.validated_ledger.base_fee_xrp, Fee)
 
 				let OracleDocumentID = 0
 
