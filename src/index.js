@@ -248,7 +248,10 @@ class backend  extends EventEmitter {
 
 				const StableDataSeries = []
 				Object.entries(stable).sort().forEach(([QuoteAsset, value]) => {
-					// log(value)
+					if (QuoteAsset === 'USDT') {
+						log(value)
+					}
+
 					const price = new decimal(value.Price).toFixed(10) * 1
 					const scale = this.countDecimals(price)
 					const data = {
