@@ -19,6 +19,7 @@
     "bignumber.js": "^9.1.2",
     "crypto-random-string": "^5.0.0",
     "debug": "^4.3.1",
+    "decimal.js": "^10.5.0",
     "dotenv": "^16.4.5",
     "events": "^3.3.0",
     "express": "^4.21.1",
