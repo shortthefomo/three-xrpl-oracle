@@ -221,6 +221,7 @@ class backend  extends EventEmitter {
 				if (!connected) {
 					log('oracle websocket disconnected')
 					// return
+					this.emit('reconnect-websocket')
 				}
 				if (Pause) {
 					await this.pause(1200)
