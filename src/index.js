@@ -48,6 +48,7 @@ class backend  extends EventEmitter {
 		let connected = false
 		let mode = '1min' // every/1min/5min
 		let timeoutpause
+		let stats
 
 		Object.assign(this, {
 			async run() {
@@ -184,6 +185,10 @@ class backend  extends EventEmitter {
 						})
 					}
 					// log(rawData)
+					if ('stats' in rawData) {
+						stats = rawData.stats
+						log('stats', stats)
+					}
 				}
 				socket.onerror = function (error) {
 					connected = false
@@ -518,6 +523,17 @@ class backend  extends EventEmitter {
 			},
 			service() {
 				const self = this
+				app.get('/stats', async function(req, res) {
+					res.setHeader('Access-Control-Allow-Origin', '*')
+					log('Called: ' + req.route.path, req.query)
+					log('params', req.params)
+					log('headers', req.headers)
+					if (req.headers.rooster === undefined) { return res.status(400).json({ 'error' : 'invalid parameters'}) }
+					if (req.headers.rooster !== 'cock a doodle doo') { return res.status(400).json({ 'error' : 'invalid parameters'}) }
+					log('stats data fetch')
+
+					res.json(stats)
+				})
 				app.get('/raw-data', async function(req, res) {
 					res.setHeader('Access-Control-Allow-Origin', '*')
 					log('Called: ' + req.route.path, req.query)
