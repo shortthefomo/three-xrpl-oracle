@@ -187,7 +187,7 @@ class backend  extends EventEmitter {
 					// log(rawData)
 					if ('stats' in rawData) {
 						stats = rawData.stats
-						log('stats', stats)
+						// log('stats', stats)
 					}
 				}
 				socket.onerror = function (error) {
