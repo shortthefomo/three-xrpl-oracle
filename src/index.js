@@ -160,6 +160,70 @@ class backend  extends EventEmitter {
 				}
 				mode = '1min'
 			},
+			isCrypto(token) {
+				let crypto = false
+				switch (token) {
+					case 'BTC':
+					case 'ETH':
+					case 'BNB':
+					case 'AAVE':
+					case 'ADA':
+					case 'ALGO':
+					case 'AVAX':
+					case 'BAT':
+					case 'CAKE':
+					case 'CSC':
+					case 'DOGE':
+					case 'DOT':
+					case 'ENJ':
+					case 'ENS':
+					case 'EOS':
+					case 'ETC':
+					case 'FLR':
+					case 'GALA':
+					case 'HBAR':
+					case 'ICP':
+					case 'KAVA':
+					case 'LINK':
+					case 'LTC':
+					case 'PEPE':
+					case 'QNT':
+					case 'RVN':
+					case 'SHIB':
+					case 'SOL':
+					case 'TRX':
+					case 'UNI':
+					case 'VET':
+					case 'WIF':
+					case 'XAH':
+					case 'XDC':
+					case 'XLM':
+					case 'ZRX':
+						crypto = true
+				}
+				return crypto
+			},
+			isStable(token) {
+				let stable = false
+				switch (token) {
+					case 'RLUSD':
+					case 'BUSD':
+					case 'USDC':
+					case 'USDT':
+					case 'USDD':
+					case 'TUSD':
+					case 'AUDT':
+					case 'EURS':
+					case 'XSGD':
+					case 'MMXN':
+					case 'DAI':
+					case 'BIDR':
+					case 'FDUSD':
+					case 'PYUSD':
+						stable = true
+				}
+				return stable
+			},
 			connectWebsocket() {
 				const self = this
 				const tokens = ['BTC', 'ETH', 'BNB', 'AAVE', 'ADA', 'ALGO', 'AVAX', 'BAT', 'CAKE', 'CSC', 'DOGE', 'DOT', 'ENJ', 'ENS', 'EOS', 'ETC', 'FLR', 'GALA', 'HBAR', 'ICP', 'KAVA', 'LINK', 'LTC', 'PEPE', 'QNT', 'RNV', 'SHIB', 'SOL', 'TRX', 'UNI', 'VET', 'WIF', 'XAH', 'XDC', 'XLM', 'ZRX']
