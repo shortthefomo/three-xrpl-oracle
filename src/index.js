@@ -341,8 +341,8 @@ class backend  extends EventEmitter {
 					const scale2 = this.countDecimals(value2)
 					const data2 = {
 						'PriceData': {
-							'BaseAsset': 'USD',
-							'QuoteAsset': this.currencyUTF8ToHex(QuoteAsset),
+							'BaseAsset': this.currencyUTF8ToHex(QuoteAsset),
+							'QuoteAsset': 'USD',
 							'AssetPrice': Math.round(value2 * Math.pow(10, scale2)),
 							'Timestamp': value.Timestamp
 						}
