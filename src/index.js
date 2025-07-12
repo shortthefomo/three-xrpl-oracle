@@ -318,7 +318,7 @@ class backend  extends EventEmitter {
 
 				const StableDataSeries = []
 				Object.entries(stable).sort().forEach(([QuoteAsset, value]) => {
-					if (QuoteAsset === 'USDT') {
+					if (QuoteAsset === 'USDT' || QuoteAsset === 'USDC' || QuoteAsset === 'RLUSD') {
 						log(value)
 					}
 
@@ -336,6 +336,21 @@ class backend  extends EventEmitter {
 						data.PriceData.Scale = this.countDecimals(price)
 					}
 					StableDataSeries.push(data)
+
+					const value2 = value.Price / currency.USD.Price
+					const scale2 = this.countDecimals(value2)
+					const data2 = {
+						'PriceData': {
+							'BaseAsset': 'USD',
+							'QuoteAsset': this.currencyUTF8ToHex(QuoteAsset),
+							'AssetPrice': Math.round(value2 * Math.pow(10, scale2)),
+							'Timestamp': value.Timestamp
+						}
+					}
+					if (scale2 > 0) {
+						data2.PriceData.Scale = this.countDecimals(value2)
+					}
+					StableDataSeries.push(data2)
 				})
 				for (let i = 0; i < StableDataSeries.length; i += ChunkSize) {
 					const chunk = StableDataSeries.slice(i, i + ChunkSize)
