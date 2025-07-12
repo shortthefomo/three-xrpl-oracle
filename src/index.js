@@ -235,11 +235,11 @@ class backend  extends EventEmitter {
 						Object.entries(rawData.oracle).forEach(([key, value]) => {
 							if (key !== 'STATS') {
 								if (value.Token !== undefined) {
-									if (tokens.includes(key)) {
-										crypto[key] = value
-									}
-									else if (key.length > 3) {
+									if (self.isStable(key)) {
 										stable[key] = value
+									}
+									if (self.isCrypto(key)) {
+										crypto[key] = value
 									}
 									else if (key.length === 3) {
 										currency[key] = value
