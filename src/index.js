@@ -2,9 +2,11 @@
 
 const { XrplClient } = require('xrpl-client')
 const { derive, sign, XrplDefinitions } = require('xrpl-accountlib')
+const EventEmitter = require('events')
 const WebSocket = require('ws')
 const Axios = require('axios')
 const dotenv = require('dotenv')
+const decimal = require('decimal.js')
 const debug = require('debug')
 const log = debug('main:backend')
 const io = require('@pm2/io')
@@ -16,18 +18,20 @@ io.init({
 
 dotenv.config()
 
-class backend {
+class backend  extends EventEmitter {
 	constructor() {
+		super()
 		dotenv.config()
 
-		const xrpl = new XrplClient(['wss://s.devnet.rippletest.net:51233', 'wss://clio.devnet.rippletest.net:51233'])
+		log((process.env.XRPL_CLIENT === 'wss://s.devnet.rippletest.net:51233') ? [process.env.XRPL_CLIENT] : [process.env.XRPL_CLIENT, 'wss://xrplcluster.com', 'wss://xrpl.link', 'wss://s2.ripple.com'])
+		const xrpl = new XrplClient((process.env.XRPL_CLIENT === 'wss://s.devnet.rippletest.net:51233') ? [process.env.XRPL_CLIENT] : [process.env.XRPL_CLIENT, 'wss://xrplcluster.com', 'wss://xrpl.link', 'wss://s2.ripple.com'])
 		const currency = {}
 		const stable = {}
 		const crypto = {}
+		let ledger_errors = 0
 
 		let definitions, socket
 		let connected = false
-		let ledger_errors = 0
 		let mode = '1min' // every/1min/5min
 
 		Object.assign(this, {
@@ -41,13 +45,14 @@ class backend {
 				// return 
 
 				this.connectWebsocket()
+				this.eventListeners()
 				await this.pause(5000)
 
 				const self = this
 				const callback = async (event) => {
 					log('ledger close', 'mode:' + mode)
 					if (mode === 'every') {
-						await self.chunckSubmit()
+						self.emit('chunk-submit')
 					}
 					this.accountBalance() // dont wait!!
 				}
@@ -55,12 +60,31 @@ class backend {
 
 				setInterval(async () => {
 					if (mode === '1min') {
-						await self.chunckSubmit(false)
+						self.emit('chunk-submit-pause')
 					}
-					await self.getAggregatePrice()
-				}, 60000)
-
-				this.checkConnected()
+					self.emit('aggregate-price')
+				}, 60_000)
+				setInterval(() => {
+					self.emit('check-connection')
+				}, 10_000)
+			},
+			eventListeners() {
+				this.addListener('chunk-submit', async () => {
+					await this.chunckSubmit()
+				})
+				this.addListener('chunk-submit-pause', async () => {
+					await this.chunckSubmit(false)
+				})
+				this.addListener('aggregate-price', async () => {
+					await this.getAggregatePrice()
+				})
+				this.addListener('check-connection', async () => {
+					this.checkConnection()
+				})
+				this.addListener('reconnect-websocket', async () => {
+					await this.pause(10_000)
+					this.connectWebsocket()
+				})
 			},
 			async getAggregatePrice(asset = 'USD') {
 				const command = {
@@ -211,8 +235,7 @@ class backend {
 			},
 			connectWebsocket() {
 				const self = this
-				log('connecting to wss://three-oracle.panicbot.xyz')
-				socket = new WebSocket('wss://three-oracle.panicbot.xyz')
+				socket = new WebSocket(process.env.ORACLE_DATA)
 				socket.onmessage = function (message) {
 					connected = true
 					const rawData = JSON.parse(message.data)
@@ -239,10 +262,10 @@ class backend {
 				}
 				socket.onclose = function (event) {
 					connected = false
-					log('socket close', event)
+					log('socket close')
 					setTimeout(() => {
-						self.connectWebsocket()
-					}, 1000)
+						self.emit('reconnect-websocket')
+					}, 5_000)
 				}
 			},
 			async pause(milliseconds = 1000) {
@@ -250,6 +273,20 @@ class backend {
 					console.log('pausing....')
 					setTimeout(resolve, milliseconds)
 				})
+			},
+			async getSequence() {
+				const acc_payload = {
+					'command': 'account_info',
+					'account': process.env.ACCOUNT,
+					'ledger_index': 'current'
+				}
+				const account_info = await xrpl.send(acc_payload)
+				if ('error' in account_info) {
+					log('error account_info', account_info)
+					return
+				}
+				log('account_info', account_info.account_data)
+				return account_info.account_data.Sequence
 			},
 			async chunckSubmit(Pause = true) {
 				const ChunkSize = 10
@@ -261,17 +298,9 @@ class backend {
 					await this.pause(1200)
 				}
 
-				const acc_payload = {
-					'command': 'account_info',
-					'account': process.env.ACCOUNT,
-					'ledger_index': 'current'
-				}
-				const account_info = await xrpl.send(acc_payload)
-				if ('error' in account_info) {
-					log('error account_info', account_info)
-					return
-				}
-				let Sequence = account_info.account_data.Sequence
+				
+				let Sequence = await this.getSequence()
+				if (Sequence === undefined) { return }
 
 				const server_info = await xrpl.send({ 'command': 'server_info' })
 				if ('error' in server_info) {
@@ -286,17 +315,18 @@ class backend {
 				const StableDataSeries = []
 				Object.entries(stable).sort().forEach(([QuoteAsset, value]) => {
 					// log(value)
-					const scale = this.countDecimals(value.Price)
+					const price = new decimal(value.Price).toFixed(10) * 1
+					const scale = this.countDecimals(price)
 					const data = {
 						'PriceData': {
 							'BaseAsset': 'XRP',
 							'QuoteAsset': this.currencyUTF8ToHex(QuoteAsset),
-							'AssetPrice': Math.round(value.Price * Math.pow(10, scale)),
+							'AssetPrice': Math.round(price * Math.pow(10, scale)),
 							'Timestamp': value.Timestamp
 						}
 					}
 					if (scale > 0) {
-						data.PriceData.Scale = this.countDecimals(value.Price)
+						data.PriceData.Scale = this.countDecimals(price)
 					}
 					StableDataSeries.push(data)
 
@@ -318,9 +348,13 @@ class backend {
 
 				for (let i = 0; i < StableDataSeries.length; i += ChunkSize) {
 					const chunk = StableDataSeries.slice(i, i + ChunkSize)
-					const result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'stable token')
+					let result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'stable token')
 					if (result === 'tecARRAY_TOO_LARGE' || result === 'temMALFORMED') {
-						await this.deleteDocumentInstance(OracleDocumentID, Fee)
+						Sequence = await this.deleteDocumentInstance(OracleDocumentID, Fee)
+					}
+					if (result === 'tefPAST_SEQ') {
+						Sequence = await this.getSequence()
+						result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'stable token')
 					}
 					Sequence++
 					OracleDocumentID++
@@ -329,17 +363,18 @@ class backend {
 				const CryptoDataSeries = []
 				Object.entries(crypto).sort().forEach(([QuoteAsset, value]) => {
 					// log(value)
-					const scale = this.countDecimals(value.Price)
+					const price = new decimal(value.Price).toFixed(10) * 1
+					const scale = this.countDecimals(price)
 					const data = {
 						'PriceData': {
 							'BaseAsset': 'XRP',
 							'QuoteAsset': this.currencyUTF8ToHex(QuoteAsset),
-							'AssetPrice': Math.round(value.Price * Math.pow(10, scale)),
+							'AssetPrice': Math.round(price * Math.pow(10, scale)),
 							'Timestamp': value.Timestamp
 						}
 					}
 					if (scale > 0) {
-						data.PriceData.Scale = this.countDecimals(value.Price)
+						data.PriceData.Scale = this.countDecimals(price)
 					}
 					CryptoDataSeries.push(data)
 				})
@@ -347,7 +382,11 @@ class backend {
 					const chunk = CryptoDataSeries.slice(i, i + ChunkSize)
 					const result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'crypto token')
 					if (result === 'tecARRAY_TOO_LARGE' || result === 'temMALFORMED') {
-						await this.deleteDocumentInstance(OracleDocumentID, Fee)
+						Sequence = await this.deleteDocumentInstance(OracleDocumentID, Fee)
+					}
+					if (result === 'tefPAST_SEQ') {
+						Sequence = await this.getSequence()
+						result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'crypto token')
 					}
 					Sequence++
 					OracleDocumentID++
@@ -356,17 +395,18 @@ class backend {
 				const CurrencyDataSeries = []
 				Object.entries(currency).sort().forEach(([QuoteAsset, value]) => {
 					// log(value)
-					const scale = this.countDecimals(value.Price)
+					const price = new decimal(value.Price).toFixed(10) * 1
+					const scale = this.countDecimals(price)
 					const data = {
 						'PriceData': {
 							'BaseAsset': 'XRP',
 							'QuoteAsset': this.currencyUTF8ToHex(QuoteAsset),
-							'AssetPrice': Math.round(value.Price * Math.pow(10, scale)),
+							'AssetPrice': Math.round(price * Math.pow(10, scale)),
 							'Timestamp': value.Timestamp
 						}
 					}
 					if (scale > 0) {
-						data.PriceData.Scale = this.countDecimals(value.Price)
+						data.PriceData.Scale = this.countDecimals(price)
 					}
 					CurrencyDataSeries.push(data)
 				})
@@ -374,15 +414,17 @@ class backend {
 					const chunk = CurrencyDataSeries.slice(i, i + ChunkSize)
 					const result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'currency')
 					if (result === 'tecARRAY_TOO_LARGE' || result === 'temMALFORMED') {
-						await this.deleteDocumentInstance(OracleDocumentID, Fee)
+						Sequence = await this.deleteDocumentInstance(OracleDocumentID, Fee)
+					}
+					if (result === 'tefPAST_SEQ') {
+						Sequence = await this.getSequence()
+						result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'currency')
 					}
 					Sequence++
 					OracleDocumentID++
 				}
 			},
 			async submit(PriceDataSeries, Sequence, Fee, OracleDocumentID, AssetClass = 'currency') {
-				
-
 				const pairs = {}
 				const series = []
 				for (let index = 0; index < PriceDataSeries.length; index++) {
@@ -403,7 +445,7 @@ class backend {
 					'Account': process.env.ACCOUNT,
 					'OracleDocumentID': OracleDocumentID,
 					//# "provider"
-					'Provider': Buffer.from('https://threexrp.dev', 'utf-8').toString('hex').toUpperCase(),
+					'Provider': Buffer.from(process.env.URL, 'utf-8').toString('hex').toUpperCase(),
 					'LastUpdateTime': (new Date().getTime() / 1000), // WHY NO ripple time stamp!
 					// # "currency"
 					'AssetClass': Buffer.from(AssetClass, 'utf-8').toString('hex').toUpperCase(),
@@ -412,6 +454,9 @@ class backend {
 					'Fee': Fee
 				}
 				const result = await this.sign(OracleSet)
+				if (result.engine_result === 'tefPAST_SEQ') {
+					await this.submit(PriceDataSeries, Sequence++, Fee, OracleDocumentID, AssetClass)
+				}
 				console.log('OracleDocumentID', AssetClass, OracleDocumentID, result.engine_result, pairs)
 
 				// if (result.engine_result === 'temMALFORMED') {
@@ -421,17 +466,11 @@ class backend {
 			},
 			async sign(tx_json) {
 				const master = derive.familySeed(process.env.SECRET)
-				// log('sign', tx_json)
 				const { signedTransaction } = sign(tx_json, master, definitions)
-				// console.log('signedTransaction', signedTransaction)
-
-
 				const transaction = await xrpl.send({
 					command: 'submit',
 					tx_blob: signedTransaction
 				})
-				// log(tx_json.PriceDataSeries)
-				// console.log('transaction', transaction)
 				return transaction
 			},
 			currencyUTF8ToHex(code) {
@@ -521,6 +560,30 @@ class backend {
 				// log(OracleDelete)
 				const result = await this.sign(OracleDelete)
 				console.log('OracleDelete', result.engine_result)
+				return Sequence
+			},
+			async checkConnection() {
+				log('checking connection')
+				const books = {
+					'id': 4,
+					'command': 'book_offers',
+					'taker': 'rrrrrrrrrrrrrrrrrrrrBZbvji',
+					'taker_gets': {'currency': 'USD', 'issuer': 'rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B' },
+					'taker_pays': {'currency': 'XRP' },
+					'limit': 100
+				}
+
+				const result = await xrpl.send(books)
+				if ('error' in result) {
+					ledger_errors++
+					log('error', result.error)
+				}
+				if (ledger_errors > 2) {
+					xrpl.reinstate({forceNextUplink: true})
+					log('reinstate client', await xrpl.send({ command: 'server_info' }))
+					ledger_errors = 0
+				}
+
 			},
 		})
 	}
