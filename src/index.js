@@ -145,6 +145,70 @@ class backend {
                     ledger_errors = 0
                 }
             },
+			isCrypto(token) {
+				let crypto = false
+				switch (token) {
+					case 'BTC':
+					case 'ETH':
+					case 'BNB':
+					case 'AAVE':
+					case 'ADA':
+					case 'ALGO':
+					case 'AVAX':
+					case 'BAT':
+					case 'CAKE':
+					case 'CSC':
+					case 'DOGE':
+					case 'DOT':
+					case 'ENJ':
+					case 'ENS':
+					case 'EOS':
+					case 'ETC':
+					case 'FLR':
+					case 'GALA':
+					case 'HBAR':
+					case 'ICP':
+					case 'KAVA':
+					case 'LINK':
+					case 'LTC':
+					case 'PEPE':
+					case 'QNT':
+					case 'RVN':
+					case 'SHIB':
+					case 'SOL':
+					case 'TRX':
+					case 'UNI':
+					case 'VET':
+					case 'WIF':
+					case 'XAH':
+					case 'XDC':
+					case 'XLM':
+					case 'ZRX':
+						crypto = true
+				}
+				return crypto
+			},
+			isStable(token) {
+				let stable = false
+				switch (token) {
+					case 'RLUSD':
+					case 'BUSD':
+					case 'USDC':
+					case 'USDT':
+					case 'USDD':
+					case 'TUSD':
+					case 'AUDT':
+					case 'EURS':
+					case 'XSGD':
+					case 'MMXN':
+					case 'DAI':
+					case 'BIDR':
+					case 'FDUSD':
+					case 'PYUSD':
+						stable = true
+				}
+				return stable
+			},
 			connectWebsocket() {
 				const self = this
 				log('connecting to wss://three-oracle.panicbot.xyz')
@@ -156,10 +220,10 @@ class backend {
 						Object.entries(rawData.oracle).forEach(([key, value]) => {
 							if (key !== 'STATS') {
 								if (value.Token !== undefined) {
-									if (key.length > 3) {
+									if (self.isStable(key)) {
 										stable[key] = value
 									}
-									if (key === 'BTC' || key === 'ETH' || key === 'BNB') {
+									if (self.isCrypto(key)) {
 										crypto[key] = value
 									}
 									else if (key.length === 3) {
@@ -169,7 +233,6 @@ class backend {
 							}
 						})
 					}
-					// log(data)
 				}
 				socket.onerror = function (error) {
 					log('error', error)
@@ -236,7 +299,23 @@ class backend {
 						data.PriceData.Scale = this.countDecimals(value.Price)
 					}
 					StableDataSeries.push(data)
+
+					const value2 = value.Price / currency.USD.Price
+					const scale2 = this.countDecimals(value2)
+					const data2 = {
+						'PriceData': {
+							'BaseAsset': 'USD',
+							'QuoteAsset': this.currencyUTF8ToHex(QuoteAsset),
+							'AssetPrice': Math.round(value2 * Math.pow(10, scale2)),
+							'Timestamp': value.Timestamp
+						}
+					}
+					if (scale2 > 0) {
+						data2.PriceData.Scale = this.countDecimals(value2)
+					}
+					StableDataSeries.push(data2)
 				})
+
 				for (let i = 0; i < StableDataSeries.length; i += ChunkSize) {
 					const chunk = StableDataSeries.slice(i, i + ChunkSize)
 					const result = await this.submit(chunk, Sequence, Fee, OracleDocumentID, 'stable token')
@@ -333,7 +412,7 @@ class backend {
 					'Fee': Fee
 				}
 				const result = await this.sign(OracleSet)
-				console.log('OracleDocumentID', OracleDocumentID, result.engine_result, pairs)
+				console.log('OracleDocumentID', AssetClass, OracleDocumentID, result.engine_result, pairs)
 
 				// if (result.engine_result === 'temMALFORMED') {
 				// 	log('OracleSet', OracleSet.PriceDataSeries)

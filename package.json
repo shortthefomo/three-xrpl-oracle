@@ -23,7 +23,7 @@
     "http": "^0.0.1-security",
     "https": "^1.0.0",
     "node-cache": "^5.1.2",
-    "ws": "^8.2.3",
+    "ws": "^8.18.0",
     "xrpl-accountlib": "^3.6.1",
     "xrpl-client": "^2.4.0",
     "xumm-sdk": "^1.3.1"
