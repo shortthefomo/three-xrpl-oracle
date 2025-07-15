@@ -179,6 +179,7 @@ class backend  extends EventEmitter {
 					case 'ENS':
 					case 'EOS':
 					case 'ETC':
+					case 'EVR':	
 					case 'FLR':
 					case 'GALA':
 					case 'HBAR':
